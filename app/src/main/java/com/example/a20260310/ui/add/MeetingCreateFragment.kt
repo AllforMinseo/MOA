@@ -16,6 +16,7 @@ import java.util.Date
 import java.util.Locale
 
 class MeetingCreateFragment : Fragment(R.layout.fragment_meeting_create) {
+
     private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -28,23 +29,28 @@ class MeetingCreateFragment : Fragment(R.layout.fragment_meeting_create) {
         val currentDate = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
         val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
 
-        nameInput.setText(currentDate)
+        if (nameInput.text.isNullOrEmpty()) {
+            nameInput.setText(currentDate)
+        }
+
         dateInput.setText(currentDate)
         timeInput.setText(currentTime)
 
-        view.findViewById<MaterialButton>(R.id.addInfoButton).setOnClickListener {
-            Toast.makeText(requireContext(), "회의 정보 추가: 더미", Toast.LENGTH_SHORT).show()
-        }
-
         view.findViewById<MaterialButton>(R.id.nextButton).setOnClickListener {
-            sessionViewModel.clearMinutes()
+            val meetingName = nameInput.text.toString()
+
+            val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
+            prefs.edit().putString("current_meeting_name", meetingName).apply()
+
+
             sessionViewModel.setDraft(
                 MeetingDraft(
-                    title = nameInput.text?.toString().orEmpty(),
-                    date = dateInput.text?.toString().orEmpty(),
-                    time = timeInput.text?.toString().orEmpty(),
-                ),
+                    title = nameInput.text.toString(),
+                    date = dateInput.text.toString(),
+                    time = timeInput.text.toString()
+                )
             )
+
             findNavController().navigate(R.id.action_meetingCreateFragment_to_addMethodFragment)
         }
     }
