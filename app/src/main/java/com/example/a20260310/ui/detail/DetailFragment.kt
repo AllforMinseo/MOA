@@ -75,11 +75,21 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     }
 
     private fun loadFiles(): List<SimpleRow> {
-        val dir = requireContext().filesDir
-        return dir.listFiles()
-            ?.filter { it.name.endsWith(".m4a") }
-            ?.map {
+
+        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
+        val baseDir = requireContext().filesDir
+
+        val meetingTitle = arguments?.getString("meetingTitle")
+
+        return baseDir.walkTopDown()
+            .filter { it.isFile && it.name.endsWith(".m4a") }
+            .filter { file ->
+                val savedTitle = prefs.getString(file.name, "")
+                savedTitle == meetingTitle   // 🔥 핵심 필터
+            }
+            .map {
                 SimpleRow(it.name, "${it.length() / 1024} KB")
-            } ?: emptyList()
+            }
+            .toList()
     }
 }
