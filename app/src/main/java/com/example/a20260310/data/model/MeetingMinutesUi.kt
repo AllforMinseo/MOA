@@ -18,6 +18,10 @@ data class MeetingDraft(
         val dt = "${date.trim()} ${time.trim()}".trim()
         return dt.ifBlank { "—" }
     }
+
+    /** 쉼표 구분 참석자 문자열 → 목록 (폼 Chip과 동일 규칙) */
+    fun participantList(): List<String> =
+        attendees.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
 
 data class MinutesUiModel(

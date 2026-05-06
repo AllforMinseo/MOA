@@ -17,6 +17,8 @@ class SummaryFragment : Fragment(R.layout.fragment_summary) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        sessionViewModel.dismissSummaryProgressPanel()
+
         val summaryText = view.findViewById<TextView>(R.id.tvSummary)
         val decisionsLayout = view.findViewById<LinearLayout>(R.id.layoutDecisions)
         val actionItemsLayout = view.findViewById<LinearLayout>(R.id.layoutActionItems)

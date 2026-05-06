@@ -1,4 +1,5 @@
 [versions]
+kotlin = "2.1.0"
 agp = "9.1.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
@@ -45,4 +46,5 @@ play-services-mlkit-document-scanner = { group = "com.google.android.gms", name 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 기존 112dp 대비 70% — 펼침 minHeight = 접힘 정사각형 한 변 -->
+    <dimen name="summary_panel_min_height">78dp</dimen>
+    <!-- 접힘 원형 로딩: 원래 36dp 크기 유지 -->
+    <dimen name="summary_panel_collapsed_indicator_size">36dp</dimen>
+    <dimen name="summary_panel_collapsed_check_size">22dp</dimen>
+</resources>
