@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">a20260310</string>
+    <string name="app_name">MOA</string>
     <string name="hello_moa">Hello MOA!</string>
 
-    <string name="nav_home">Home</string>
+    <string name="nav_home">MOA</string>
     <string name="nav_meeting">Meeting</string>
-    <string name="nav_history">History</string>
+    <string name="nav_history">기록</string>
     <string name="nav_meeting_upload">회의록 작성</string>
     <string name="nav_meeting_summary">회의 요약</string>
     <string name="nav_recording">녹음</string>
@@ -23,11 +23,19 @@
     <string name="add_document_mime_rejected">형식은 PDF, PNG, JPEG, WEBP만 가능합니다.</string>
     <string name="add_document_added">선택한 문서: %1$s</string>
     <string name="add_summarize">요약</string>
-    <string name="create_meeting">생성</string>
+    <string name="create">생성</string>
     <string name="summary_done">완료</string>
     <string name="select">선택</string>
     <string name="recording_summarize">요약하기</string>
     <string name="recording_done">녹음 완료</string>
+    <string name="recording_play">재생</string>
+    <string name="recording_record">녹음</string>
+    <string name="recording_save_file">녹음 파일 저장</string>
+    <string name="recording_save_dialog_title">녹음 파일 저장</string>
+    <string name="recording_save_hint">녹음 파일 제목</string>
+    <string name="recording_save_confirm">저장</string>
+    <string name="recording_no_file">저장할 녹음 파일이 없습니다.</string>
+    <string name="recording_playback_failed">재생을 시작할 수 없습니다.</string>
     <string name="summarizing_title">요약 중</string>
     <string name="summarizing_message">회의 내용을 분석하고 있습니다…</string>
     <string name="summarizing_error_generic">요약 처리 중 오류가 발생했습니다.</string>

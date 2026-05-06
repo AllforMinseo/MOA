@@ -8,16 +8,6 @@
     android:background="@color/color_background"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/home_header"
-        android:textAppearance="?attr/textAppearanceTitleLarge"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <!-- 폴더 탭 -->
     <HorizontalScrollView
         android:id="@+id/folderScroll"

@@ -29,6 +29,8 @@ data class SelectedSourceFile(
     val type: Type,
     val displayName: String,
     val localPath: String,
+    /** 녹음 세그먼트 m4a 경로(순서). 비어 있으면 [localPath]만 사용한다. */
+    val segmentLocalPaths: List<String> = emptyList(),
 ) {
     enum class Type { AUDIO_RECORD, AUDIO_UPLOAD, IMAGE, DOCUMENT }
 }
@@ -384,8 +386,16 @@ class MeetingSessionViewModel(
     private fun estimateDurationMs(files: List<SelectedSourceFile>): Long {
         var bytes = 0L
         for (f in files) {
-            val file = File(f.localPath)
-            if (file.isFile) bytes += file.length()
+            val paths =
+                when (f.type) {
+                    SelectedSourceFile.Type.AUDIO_RECORD ->
+                        f.segmentLocalPaths.takeIf { it.isNotEmpty() } ?: listOf(f.localPath)
+                    else -> listOf(f.localPath)
+                }
+            for (p in paths) {
+                val file = File(p)
+                if (file.isFile) bytes += file.length()
+            }
         }
         if (bytes == 0L) bytes = 256L * 1024L
         val extraFromSize = (bytes / 12_000L) * 1000L
@@ -409,17 +419,31 @@ class MeetingSessionViewModel(
             var latestTranscriptText = ""
             withContext(Dispatchers.IO) {
                 selected.forEach { file ->
-                    val local = File(file.localPath)
-                    if (!local.exists() || local.length() == 0L) return@forEach
                     when (file.type) {
                         SelectedSourceFile.Type.AUDIO_RECORD,
                         SelectedSourceFile.Type.AUDIO_UPLOAD -> {
-                            val transcript = repository.uploadAudio(created.id, local)
+                            val local = File(file.localPath)
+                            val audioFiles =
+                                when (file.type) {
+                                    SelectedSourceFile.Type.AUDIO_RECORD -> {
+                                        val segs = file.segmentLocalPaths
+                                        if (segs.isNotEmpty()) {
+                                            segs.map { File(it) }.filter { it.isFile && it.length() > 0L }
+                                        } else {
+                                            listOf(local).filter { it.isFile && it.length() > 0L }
+                                        }
+                                    }
+                                    else -> listOf(local).filter { it.isFile && it.length() > 0L }
+                                }
+                            if (audioFiles.isEmpty()) return@forEach
+                            val transcript = repository.uploadAudio(created.id, audioFiles)
                             latestTranscriptText = transcript.content
                             // 오디오 업로드 응답에 서버 파일 경로 필드 없음 → serverFilePaths에 저장하지 않음
                         }
                         SelectedSourceFile.Type.IMAGE,
                         SelectedSourceFile.Type.DOCUMENT -> {
+                            val local = File(file.localPath)
+                            if (!local.exists() || local.length() == 0L) return@forEach
                             val imageResp =
                                 repository.uploadImage(created.id, local, imageType = "image")
                             imageResp.filePath.trim().takeIf { it.isNotEmpty() }?.let {

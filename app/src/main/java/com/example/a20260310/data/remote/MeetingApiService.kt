@@ -27,7 +27,7 @@ interface MeetingApiService {
     @POST("upload/audio/{meetingId}")
     suspend fun uploadAudio(
         @Path("meetingId") meetingId: Int,
-        @Part file: MultipartBody.Part,
+        @Part files: List<@JvmSuppressWildcards MultipartBody.Part>,
     ): TranscriptResponseDto
 
     @Multipart

@@ -73,8 +73,10 @@
         android:name="com.example.a20260310.ui.recording.RecordingFragment"
         android:label="@string/nav_recording">
         <action
-            android:id="@+id/action_recordingFragment_to_summarizingFragment"
-            app:destination="@id/summarizingFragment" />
+            android:id="@+id/action_recordingFragment_to_addMethodFragment"
+            app:destination="@id/addMethodFragment"
+            app:popUpTo="@id/addMethodFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
