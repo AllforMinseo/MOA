@@ -440,6 +440,7 @@ class MeetingSessionViewModel(
             var latestTranscriptText = ""
             withContext(Dispatchers.IO) {
                 val audioFilesToUpload = mutableListOf<File>()
+                val imageFilesToUpload = mutableListOf<File>()
                 val tempGeneratedAudioFiles = mutableListOf<File>()
 
                 selected.forEach { file ->
@@ -469,11 +470,7 @@ class MeetingSessionViewModel(
                         SelectedSourceFile.Type.DOCUMENT -> {
                             val local = File(file.localPath)
                             if (!local.exists() || local.length() == 0L) return@forEach
-                            val imageResp =
-                                repository.uploadImage(created.id, local, imageType = "image")
-                            imageResp.filePath.trim().takeIf { it.isNotEmpty() }?.let {
-                                uploadedServerPaths.add(it)
-                            }
+                            imageFilesToUpload.add(local)
                         }
                     }
                 }
@@ -483,6 +480,19 @@ class MeetingSessionViewModel(
                         val transcript = repository.uploadAudioFiles(created.id, audioFilesToUpload)
                         latestTranscriptText = transcript.content
                         // 오디오 업로드 응답에 서버 파일 경로 필드 없음 → serverFilePaths에 저장하지 않음
+                    }
+                    if (imageFilesToUpload.isNotEmpty()) {
+                        val imageResponses =
+                            repository.uploadImageFiles(
+                                meetingId = created.id,
+                                files = imageFilesToUpload,
+                                imageType = "image",
+                            )
+                        imageResponses.forEach { resp ->
+                            resp.filePath.trim().takeIf { it.isNotEmpty() }?.let {
+                                uploadedServerPaths.add(it)
+                            }
+                        }
                     }
                 } finally {
                     tempGeneratedAudioFiles.forEach { it.delete() }

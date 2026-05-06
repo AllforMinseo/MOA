@@ -74,16 +74,19 @@ def upload_audio(
 
 @router.post(
     "/image/{meeting_id}",
-    response_model=ImageUploadResponse,
+    response_model=list[ImageUploadResponse],
     status_code=status.HTTP_201_CREATED,
     summary="이미지 업로드",
 )
 def upload_image(
     meeting_id: int,
-    file: UploadFile = File(..., description="업로드할 이미지 파일"),
+    files: Annotated[
+        list[UploadFile],
+        File(description="업로드할 이미지/문서 파일 목록"),
+    ],
     image_type: str = Form("image", description="image 또는 whiteboard"),
     db: Session = Depends(get_db),
-) -> ImageUploadResponse:
+) -> list[ImageUploadResponse]:
     """
     이미지 파일을 업로드하고 OCR/분석을 수행한 뒤 결과를 저장합니다.
 
@@ -93,11 +96,17 @@ def upload_image(
     - whiteboard
     """
 
-    if not file.filename:
+    if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="업로드할 이미지 파일명이 비어 있습니다.",
+            detail="업로드할 이미지 파일이 없습니다.",
         )
+    for file in files:
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업로드할 이미지 파일명이 비어 있습니다.",
+            )
 
     if image_type not in {"image", "whiteboard"}:
         raise HTTPException(
@@ -105,9 +114,12 @@ def upload_image(
             detail="image_type은 'image' 또는 'whiteboard'만 가능합니다.",
         )
 
-    return process_uploaded_image(
-        db=db,
-        meeting_id=meeting_id,
-        upload_file=file,
-        image_type=image_type,
-    )
+    return [
+        process_uploaded_image(
+            db=db,
+            meeting_id=meeting_id,
+            upload_file=file,
+            image_type=image_type,
+        )
+        for file in files
+    ]

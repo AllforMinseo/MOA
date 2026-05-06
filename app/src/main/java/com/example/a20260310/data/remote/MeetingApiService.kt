@@ -32,11 +32,11 @@ interface MeetingApiService {
 
     @Multipart
     @POST("upload/image/{meetingId}")
-    suspend fun uploadImage(
+    suspend fun uploadImageFiles(
         @Path("meetingId") meetingId: Int,
-        @Part file: MultipartBody.Part,
+        @Part files: List<@JvmSuppressWildcards MultipartBody.Part>,
         @Part("image_type") imageType: RequestBody,
-    ): ImageUploadResponseDto
+    ): List<ImageUploadResponseDto>
 
     @POST("meetings/{meetingId}/summary")
     suspend fun generateSummary(

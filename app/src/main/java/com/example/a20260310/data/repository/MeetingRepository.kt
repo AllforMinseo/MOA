@@ -63,12 +63,22 @@ class MeetingRepository(
         }
     }
 
-    suspend fun uploadImage(meetingId: Int, file: File, imageType: String = "image"): ImageUploadResponseDto {
-        val mediaType = mediaTypeForUploadFile(file.name).toMediaTypeOrNull()
-        val body = file.asRequestBody(mediaType)
-        val part = MultipartBody.Part.createFormData("file", file.name, body)
+    suspend fun uploadImageFiles(
+        meetingId: Int,
+        files: List<File>,
+        imageType: String = "image",
+    ): List<ImageUploadResponseDto> {
+        require(files.isNotEmpty()) { "uploadImageFiles requires at least one file" }
+        val validFiles = files.filter { it.exists() && it.length() > 0L }
+        require(validFiles.isNotEmpty()) { "uploadImageFiles requires non-empty files" }
+        val parts =
+            validFiles.map { file ->
+                val mediaType = mediaTypeForUploadFile(file.name).toMediaTypeOrNull()
+                val body = file.asRequestBody(mediaType)
+                MultipartBody.Part.createFormData("files", file.name, body)
+            }
         val imageTypeBody = imageType.toRequestBody("text/plain".toMediaType())
-        return api.uploadImage(meetingId, part, imageTypeBody)
+        return api.uploadImageFiles(meetingId, parts, imageTypeBody)
     }
 
     private fun mediaTypeForUploadFile(fileName: String): String {

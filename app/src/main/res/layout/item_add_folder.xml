@@ -19,7 +19,7 @@
         <ImageView
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:src="@drawable/moa_add_folder" />
+            android:src="@drawable/ic_add_folder" />
 
         <TextView
             android:layout_width="wrap_content"

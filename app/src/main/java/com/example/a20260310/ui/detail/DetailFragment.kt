@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.a20260310.R
 import com.example.a20260310.data.model.SimpleRow
-import com.example.a20260310.ui.home.HomeFragment
+import com.example.a20260310.ui.common.SimpleRowAdapter
 import com.google.android.material.button.MaterialButton
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
@@ -71,7 +71,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         summaryScroll.visibility = View.GONE
         recycler.visibility = View.VISIBLE
 
-        recycler.adapter = HomeFragment.SimpleRowAdapter(loadFiles()) {}
+        recycler.adapter = SimpleRowAdapter(loadFiles())
     }
 
     private fun loadFiles(): List<SimpleRow> {

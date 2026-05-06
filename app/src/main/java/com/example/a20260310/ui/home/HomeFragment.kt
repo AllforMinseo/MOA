@@ -32,40 +32,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
-import android.view.LayoutInflater
-
-
-
 class HomeFragment : Fragment(R.layout.fragment_home) {
-
-    class SimpleRowAdapter(
-        private val items: List<SimpleRow>,
-        private val onClick: (SimpleRow) -> Unit
-    ) : RecyclerView.Adapter<SimpleRowAdapter.ViewHolder>() {
-
-        inner class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            fun bind(item: SimpleRow) {
-                view.findViewById<TextView>(R.id.title).text = item.title
-                view.findViewById<TextView>(R.id.subtitle).text = item.subtitle
-
-                view.setOnClickListener {
-                    onClick(item)
-                }
-            }
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_simple_row, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun getItemCount(): Int = items.size
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(items[position])
-        }
-    }
+    private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
     private lateinit var recycler: RecyclerView
     private lateinit var folderTabs: LinearLayout
     private var selectedFolder: String = "전체"
@@ -321,82 +289,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val items = if (selectedFolder == "전체") {
             getAllFiles(requireContext())
         } else {
-            getFilesInFolder(requireContext(), selectedFolder)
-        }
-
-        recycler.adapter = SimpleRowAdapter(items)
-    }
-
-    private fun setupFolderTabs() {
-        folderTabs.removeAllViews()
-
-        val folders = mutableListOf("전체")
-        folders.addAll(getFolderNames(requireContext()))
-
-        folders.forEach { name ->
-            val btn = createFolderButton(name)
-            folderTabs.addView(btn)
-        }
-
-        updateTabs()
-    }
-
-    private fun createFolderButton(name: String): MaterialButton {
-        val btn = MaterialButton(requireContext())
-
-        btn.text = name
-
-        btn.cornerRadius = 0
-
-        btn.setPadding(40, 16, 40, 16)
-
-        btn.strokeWidth = 2
-        btn.strokeColor = ContextCompat.getColorStateList(requireContext(), R.color.moa_line)
-
-        btn.setBackgroundColor(resources.getColor(R.color.moa_bg, null))
-        btn.setTextColor(resources.getColor(R.color.moa_orange_soft, null))
-
-        btn.setOnClickListener {
-            selectedFolder = name
-            updateTabs()
-            loadList()
-        }
-
-        return btn
-    }
-
-    private fun updateTabs() {
-        for (i in 0 until folderTabs.childCount) {
-            val btn = folderTabs.getChildAt(i) as MaterialButton
-
-            if (btn.text == selectedFolder) {
-                btn.setBackgroundColor(resources.getColor(R.color.moa_orange, null))
-                btn.setTextColor(resources.getColor(android.R.color.white, null))
-            } else {
-                btn.setBackgroundColor(resources.getColor(R.color.moa_bg, null))
-                btn.setTextColor(resources.getColor(R.color.moa_orange_soft, null))
-            }
-        }
-    }
-
-    private fun loadList() {
-        val items = if (selectedFolder == "전체") {
-            getAllFiles(requireContext())
-        } else {
             getFilesByFolder(requireContext(), selectedFolder)
         }
 
-        recycler.adapter = SimpleRowAdapter(items) { item ->
-
-            val bundle = Bundle().apply {
-                putString("meetingTitle", item.title)
-            }
-
-            findNavController().navigate(
-                R.id.action_homeFragment_to_detailFragment,
-                bundle
-            )
-        }
+        recycler.adapter = SimpleRowAdapter(items)
     }
 }
 
