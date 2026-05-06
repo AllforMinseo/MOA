@@ -6,7 +6,7 @@ audio_service.py
 역할
 - 업로드된 오디오 파일 저장
 - 오디오 전처리
-- STT 서버 전송 전 wav 변환
+- STT 서버 전송 전 wav 변환(단일) 또는 세그먼트 병합 후 wav
 - STT 수행
 - transcript DB 저장
 
@@ -28,7 +28,7 @@ transcript_repository
 
 from __future__ import annotations
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from repositories.meeting_repository import get_meeting_by_id
@@ -36,45 +36,22 @@ from repositories.transcript_repository import create_transcript
 from schemas.transcript_schema import TranscriptCreate, TranscriptResponse
 from services.stt_service import transcribe_audio_file
 from storage.file_manager import save_audio_file
+from utils.audio_converter import convert_audio_to_wav, merge_audio_segments_to_wav
 from utils.preprocess import preprocess_audio_file
-from utils.audio_converter import convert_audio_to_wav
 
 
 def process_uploaded_audio(
     db: Session,
     meeting_id: int,
-    upload_file,
+    upload_files: list[UploadFile],
 ) -> TranscriptResponse:
     """
-    업로드된 오디오 파일을 저장하고,
-    STT 서버에 보내기 전에 wav 파일로 변환한 뒤,
+    업로드된 오디오(1개 이상)를 저장하고,
+    STT 서버에 보내기 전에 wav로 맞춘 뒤,
     STT 결과를 transcript DB에 저장한다.
 
-    Parameters
-    ----------
-    db : Session
-        SQLAlchemy DB 세션
-
-    meeting_id : int
-        이 오디오가 연결될 회의 ID
-
-    upload_file : UploadFile
-        FastAPI UploadFile 객체
-
-    Returns
-    -------
-    TranscriptResponse
-        저장된 transcript 응답 스키마
-
-    동작 방식
-    --------
-    1. meeting_id에 해당하는 회의 존재 여부 확인
-    2. 업로드된 오디오 파일을 meeting_id 전용 폴더에 저장
-    3. 저장된 오디오 파일 전처리
-    4. STT 서버 전송용 wav 파일로 변환
-    5. STT 수행
-    6. transcript DB 저장
-    7. 응답 스키마 반환
+    - upload_files가 1개: 기존과 동일하게 단일 파일 변환 후 STT
+    - 2개 이상: 순서대로 저장 후 ffmpeg 병합 → 단일 wav → STT 1회
     """
 
     # 1. 회의 존재 여부 확인
@@ -85,22 +62,31 @@ def process_uploaded_audio(
             detail="해당 meeting_id의 회의를 찾을 수 없습니다.",
         )
 
-    # 2. 오디오 파일 저장
-    #    meeting_id를 함께 넘겨 회의별 폴더에 저장되도록 처리
-    saved_path = save_audio_file(
-        upload_file=upload_file,
-        meeting_id=meeting_id,
-    )
+    if not upload_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="업로드할 오디오 파일이 없습니다.",
+        )
 
-    # 3. 오디오 전처리
-    #    기존 프로젝트의 preprocess_audio_file() 로직을 유지
-    processed_path = preprocess_audio_file(saved_path)
+    # 2. 오디오 파일 저장 (순서 유지)
+    saved_paths: list[str] = []
+    for upload_file in upload_files:
+        saved_paths.append(
+            save_audio_file(
+                upload_file=upload_file,
+                meeting_id=meeting_id,
+            ),
+        )
 
-    # 4. STT 서버로 보내기 전에 wav 파일로 변환
-    #    Android에서 m4a, mp4, aac 등으로 녹음해도
-    #    STT 서버에는 항상 wav 파일을 보내기 위한 단계
+    # 3. 전처리
+    processed_paths = [preprocess_audio_file(p) for p in saved_paths]
+
+    # 4. wav 변환 또는 세그먼트 병합
     try:
-        wav_path = convert_audio_to_wav(processed_path)
+        if len(processed_paths) == 1:
+            wav_path = convert_audio_to_wav(processed_paths[0])
+        else:
+            wav_path = merge_audio_segments_to_wav(processed_paths)
 
     except FileNotFoundError as e:
         raise HTTPException(
@@ -111,7 +97,7 @@ def process_uploaded_audio(
     except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"오디오 wav 변환 중 오류가 발생했습니다: {str(e)}",
+            detail=f"오디오 wav 변환·병합 중 오류가 발생했습니다: {str(e)}",
         )
 
     except Exception as e:
@@ -121,7 +107,6 @@ def process_uploaded_audio(
         )
 
     # 5. STT 실행
-    #    기존 processed_path가 아니라 wav_path를 넘겨야 함
     try:
         transcript_text = transcribe_audio_file(wav_path)
 

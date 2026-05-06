@@ -13,14 +13,8 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:viewportHeight="500" android:viewportWidth="500" android:width="24dp">
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:viewportHeight="320" android:viewportWidth="320" android:width="24dp">
       
-    <group>
-            
-        <clip-path android:pathData="M0,0h500v500h-500z"/>
-            
-        <path android:fillColor="#000000" android:pathData="M284,369V131H352V369H284ZM148,369V131H216V369H148Z"/>
-          
-    </group>
+    <path android:fillColor="#000000" android:pathData="M146.67,200H173.33V226.67H146.67V200ZM146.67,93.33H173.33V173.33H146.67V93.33ZM159.87,26.67C86.27,26.67 26.67,86.4 26.67,160C26.67,233.6 86.27,293.33 159.87,293.33C233.6,293.33 293.33,233.6 293.33,160C293.33,86.4 233.6,26.67 159.87,26.67ZM160,266.67C101.07,266.67 53.33,218.93 53.33,160C53.33,101.07 101.07,53.33 160,53.33C218.93,53.33 266.67,101.07 266.67,160C266.67,218.93 218.93,266.67 160,266.67Z"/>
     
 </vector>

@@ -14,13 +14,13 @@
   ~ limitations under the License.
   -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:viewportHeight="500" android:viewportWidth="500" android:width="24dp">
-
+      
     <group>
-
+            
         <clip-path android:pathData="M0,0h500v500h-500z"/>
-
+            
         <path android:fillColor="#000000" android:pathData="M153,133L346,133A20,20 0,0 1,366 153L366,346A20,20 0,0 1,346 366L153,366A20,20 0,0 1,133 346L133,153A20,20 0,0 1,153 133z"/>
-
+          
     </group>
-
+    
 </vector>

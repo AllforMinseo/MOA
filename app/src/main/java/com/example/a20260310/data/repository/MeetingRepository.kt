@@ -21,11 +21,24 @@ class MeetingRepository(
         return api.createMeeting(MeetingCreateRequest(title = title, description = description))
     }
 
-    suspend fun uploadAudio(meetingId: Int, file: File): TranscriptResponseDto {
-        val mediaType = "audio/mp4".toMediaTypeOrNull()
-        val body = file.asRequestBody(mediaType)
-        val part = MultipartBody.Part.createFormData("file", file.name, body)
-        return api.uploadAudio(meetingId, part)
+    suspend fun uploadAudio(meetingId: Int, files: List<File>): TranscriptResponseDto {
+        require(files.isNotEmpty()) { "uploadAudio requires at least one file" }
+        val parts =
+            files.map { file ->
+                val mediaType = audioMediaTypeForFile(file.name).toMediaTypeOrNull()
+                val body = file.asRequestBody(mediaType)
+                MultipartBody.Part.createFormData("files", file.name, body)
+            }
+        return api.uploadAudio(meetingId, parts)
+    }
+
+    private fun audioMediaTypeForFile(fileName: String): String {
+        return when (fileName.substringAfterLast('.', "").lowercase()) {
+            "wav" -> "audio/wav"
+            "mp3" -> "audio/mpeg"
+            "m4a", "mp4", "aac" -> "audio/mp4"
+            else -> "application/octet-stream"
+        }
     }
 
     suspend fun uploadImage(meetingId: Int, file: File, imageType: String = "image"): ImageUploadResponseDto {

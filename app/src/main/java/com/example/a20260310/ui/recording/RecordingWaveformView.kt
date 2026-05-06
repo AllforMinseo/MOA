@@ -12,6 +12,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import com.example.a20260310.BuildConfig
+import com.example.a20260310.data.model.RecordingPhase
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.pow
@@ -182,7 +183,7 @@ class RecordingWaveformView @JvmOverloads constructor(
         this.phase = phase
         waveformInteractive =
             phase != RecordingPhase.RECORDING &&
-                    (phase == RecordingPhase.PAUSED || totalRecordedMs > 0)
+                (phase == RecordingPhase.PAUSED || totalRecordedMs > 0)
         if (phase == RecordingPhase.RECORDING) {
             stopFling()
         }

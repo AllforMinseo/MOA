@@ -14,6 +14,8 @@ upload_router.py
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -37,23 +39,36 @@ router = APIRouter(
 )
 def upload_audio(
     meeting_id: int,
-    file: UploadFile = File(..., description="업로드할 오디오 파일"),
+    files: Annotated[
+        list[UploadFile],
+        File(description="순서가 있는 오디오 세그먼트(1개면 기존 단일 업로드와 동일)"),
+    ],
     db: Session = Depends(get_db),
 ) -> TranscriptResponse:
     """
     오디오 파일을 업로드하고 STT를 수행한 뒤 transcript를 저장합니다.
+
+    - 파트 이름은 `files`이며, 동일 이름으로 여러 개를 보낼 수 있습니다.
+    - 세그먼트가 2개 이상이면 서버에서 ffmpeg로 병합한 뒤 STT를 한 번만 호출합니다.
     """
 
-    if not file.filename:
+    if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="업로드할 오디오 파일명이 비어 있습니다.",
+            detail="업로드할 오디오 파일이 없습니다.",
         )
+
+    for f in files:
+        if not f.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업로드할 오디오 파일명이 비어 있습니다.",
+            )
 
     return process_uploaded_audio(
         db=db,
         meeting_id=meeting_id,
-        upload_file=file,
+        upload_files=files,
     )
 
 

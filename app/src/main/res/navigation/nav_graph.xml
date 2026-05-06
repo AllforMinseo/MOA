@@ -33,6 +33,9 @@
         <action
             android:id="@+id/action_homeFragment_to_folderSelectFragment"
             app:destination="@id/folderSelectFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_summaryFragment"
+            app:destination="@id/summaryFragment" />
     </fragment>
 
     <fragment
@@ -70,8 +73,10 @@
         android:name="com.example.a20260310.ui.recording.RecordingFragment"
         android:label="@string/nav_recording">
         <action
-            android:id="@+id/action_recordingFragment_to_summarizingFragment"
-            app:destination="@id/summarizingFragment" />
+            android:id="@+id/action_recordingFragment_to_addMethodFragment"
+            app:destination="@id/addMethodFragment"
+            app:popUpTo="@id/addMethodFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
@@ -83,6 +88,11 @@
             app:destination="@id/summaryFragment"
             app:popUpTo="@id/summarizingFragment"
             app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_summarizingFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
