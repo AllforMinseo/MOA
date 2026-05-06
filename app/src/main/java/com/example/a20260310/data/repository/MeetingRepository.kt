@@ -1,5 +1,6 @@
 package com.example.a20260310.data.repository
 
+import android.util.Log
 import com.example.a20260310.data.remote.ApiClient
 import com.example.a20260310.data.remote.MeetingApiService
 import com.example.a20260310.data.remote.dto.ImageUploadResponseDto
@@ -12,24 +13,45 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.HttpException
 import java.io.File
 
 class MeetingRepository(
     private val api: MeetingApiService = ApiClient.meetingApi,
 ) {
+    companion object {
+        private const val TAG = "MeetingRepository"
+    }
+
     suspend fun createMeeting(title: String, description: String?): MeetingResponseDto {
         return api.createMeeting(MeetingCreateRequest(title = title, description = description))
     }
 
-    suspend fun uploadAudio(meetingId: Int, files: List<File>): TranscriptResponseDto {
-        require(files.isNotEmpty()) { "uploadAudio requires at least one file" }
+    suspend fun uploadAudioFiles(meetingId: Int, files: List<File>): TranscriptResponseDto {
+        require(files.isNotEmpty()) { "uploadAudioFiles requires at least one file" }
+        val validFiles = files.filter { it.exists() && it.length() > 0L }
+        require(validFiles.isNotEmpty()) { "uploadAudioFiles requires non-empty files" }
+
         val parts =
-            files.map { file ->
-                val mediaType = audioMediaTypeForFile(file.name).toMediaTypeOrNull()
-                val body = file.asRequestBody(mediaType)
+            validFiles.map { file ->
+                val mime = audioMediaTypeForFile(file.name)
+                Log.d(TAG, "uploadAudioFiles part name=files file=${file.name} mime=$mime")
+                val body = file.asRequestBody(mime.toMediaTypeOrNull())
                 MultipartBody.Part.createFormData("files", file.name, body)
             }
-        return api.uploadAudio(meetingId, parts)
+        val path = "upload/audio/$meetingId"
+        Log.d(TAG, "uploadAudioFiles requestPath=/$path filesCount=${parts.size}")
+
+        return try {
+            api.uploadAudioFiles(meetingId, parts)
+        } catch (e: HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()?.trim().orEmpty()
+            Log.e(
+                TAG,
+                "uploadAudioFiles failed code=${e.code()} path=/$path errorBody=$errorBody",
+            )
+            throw e
+        }
     }
 
     private fun audioMediaTypeForFile(fileName: String): String {

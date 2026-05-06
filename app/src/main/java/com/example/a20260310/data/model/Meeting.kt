@@ -9,7 +9,7 @@ data class Meeting(
     /** 이미지/PDF 등 업로드 API 응답의 `file_path`만 누적 (로컬 경로 아님) */
     val serverFilePaths: List<String>,
     val status: MeetingStatus,
-    val summary: String? = null,
+    val summary: MeetingSummary? = null,
 )
 
 enum class MeetingStatus {

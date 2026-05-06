@@ -31,11 +31,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.LinkedHashSet
 import java.util.Locale
 
 class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
 
     companion object {
+        private val AUDIO_PICKER_MIME_TYPES = arrayOf(
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/m4a",
+            "audio/*",
+        )
         private val DOCUMENT_PICKER_MIME_TYPES = arrayOf(
             "application/pdf",
             "image/png",
@@ -50,6 +59,16 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
             "image/webp",
         )
         private val ALLOWED_DOCUMENT_EXTENSIONS = setOf("pdf", "png", "jpg", "jpeg", "webp")
+        private val ALLOWED_AUDIO_MIME_TYPES = setOf(
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/m4a",
+            "audio/aac",
+            "audio/*",
+        )
+        private val ALLOWED_AUDIO_EXTENSIONS = setOf("wav", "mp3", "m4a", "mp4", "aac")
     }
     private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
 
@@ -105,28 +124,40 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
             }
         }
 
-    private val pickAudioFile =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri == null) return@registerForActivityResult
+    private val pickAudioFiles =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+            if (uris.isEmpty()) return@registerForActivityResult
             lifecycleScope.launch {
-                val displayName = resolveDisplayName(uri)
-                val outputPath = withContext(Dispatchers.IO) { copyPickedAudioToAppStorage(uri, displayName) }
-                if (outputPath != null) {
-                    sessionViewModel.addSelectedFile(
-                        SelectedSourceFile(
-                            type = SelectedSourceFile.Type.AUDIO_UPLOAD,
-                            displayName = displayName,
-                            localPath = outputPath,
-                        ),
-                    )
-                    Toast.makeText(
-                        requireContext(),
-                        "선택한 파일: $displayName",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                } else {
-                    Toast.makeText(requireContext(), "오디오 파일을 읽지 못했습니다.", Toast.LENGTH_SHORT).show()
+                val uniqueUris = LinkedHashSet(uris).toList()
+                var success = 0
+                var rejected = 0
+                uniqueUris.forEach { uri ->
+                    val displayName = resolveDisplayName(uri)
+                    if (!isAllowedAudioUri(uri, displayName)) {
+                        rejected++
+                        return@forEach
+                    }
+                    val outputPath =
+                        withContext(Dispatchers.IO) { copyPickedAudioToAppStorage(uri, displayName) }
+                    if (outputPath != null) {
+                        sessionViewModel.addSelectedFile(
+                            SelectedSourceFile(
+                                type = SelectedSourceFile.Type.AUDIO_UPLOAD,
+                                displayName = displayName,
+                                localPath = outputPath,
+                            ),
+                        )
+                        success++
+                    }
                 }
+                val message =
+                    when {
+                        success > 0 && rejected > 0 -> "오디오 ${success}개 추가, ${rejected}개는 형식이 맞지 않아 제외했어요."
+                        success > 0 -> "오디오 파일 ${success}개를 추가했어요."
+                        rejected > 0 -> "허용되지 않는 오디오 형식입니다."
+                        else -> "오디오 파일을 읽지 못했습니다."
+                    }
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -140,7 +171,7 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
             findNavController().navigate(R.id.action_addMethodFragment_to_recordingFragment)
         }
         view.findViewById<MaterialCardView>(R.id.cardUploadAudio).setOnClickListener {
-            pickAudioFile.launch(arrayOf("audio/*"))
+            pickAudioFiles.launch(AUDIO_PICKER_MIME_TYPES)
         }
         view.findViewById<MaterialCardView>(R.id.cardCapture).setOnClickListener {
             startDocumentScan()
@@ -174,6 +205,14 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
         if (ext in ALLOWED_DOCUMENT_EXTENSIONS) return true
         val mime = requireContext().contentResolver.getType(uri)?.lowercase(Locale.ROOT)
         return mime != null && mime in ALLOWED_DOCUMENT_MIME_TYPES
+    }
+
+    private fun isAllowedAudioUri(uri: Uri, displayName: String): Boolean {
+        val ext = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+        if (ext in ALLOWED_AUDIO_EXTENSIONS) return true
+        val mime = requireContext().contentResolver.getType(uri)?.lowercase(Locale.ROOT) ?: return false
+        if (mime in ALLOWED_AUDIO_MIME_TYPES) return true
+        return mime.startsWith("audio/")
     }
 
     private fun copyPickedDocumentToAppStorage(uri: Uri, displayName: String): String? {

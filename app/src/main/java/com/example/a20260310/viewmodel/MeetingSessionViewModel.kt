@@ -1,5 +1,8 @@
 package com.example.a20260310.viewmodel
 
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.os.SystemClock
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -16,7 +19,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import java.io.File
+import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -379,6 +385,21 @@ class MeetingSessionViewModel(
                         completionMode = mode,
                     ),
                 )
+            } else {
+                _summaryProgress.postValue(
+                    SummaryProgressState(
+                        meetingTitle = job.meetingTitle,
+                        progressPercent = 100,
+                        etaSecondsRemaining = 0L,
+                        isRunning = false,
+                        isComplete = true,
+                        phase = SummaryPanelPhase.COMPLETED,
+                        errorMessage = _pipelineError.value ?: "요약 생성에 실패했습니다.",
+                        summarySucceeded = false,
+                        waitingCount = waitingCountSnapshot(),
+                        completionMode = SummaryCompletionMode.NONE,
+                    ),
+                )
             }
         }
     }
@@ -418,27 +439,31 @@ class MeetingSessionViewModel(
                 }
             var latestTranscriptText = ""
             withContext(Dispatchers.IO) {
+                val audioFilesToUpload = mutableListOf<File>()
+                val tempGeneratedAudioFiles = mutableListOf<File>()
+
                 selected.forEach { file ->
                     when (file.type) {
                         SelectedSourceFile.Type.AUDIO_RECORD,
                         SelectedSourceFile.Type.AUDIO_UPLOAD -> {
                             val local = File(file.localPath)
-                            val audioFiles =
+                            val audioFile =
                                 when (file.type) {
                                     SelectedSourceFile.Type.AUDIO_RECORD -> {
                                         val segs = file.segmentLocalPaths
-                                        if (segs.isNotEmpty()) {
-                                            segs.map { File(it) }.filter { it.isFile && it.length() > 0L }
-                                        } else {
-                                            listOf(local).filter { it.isFile && it.length() > 0L }
-                                        }
+                                        val ordered =
+                                            (segs.map { File(it) } + local)
+                                                .filter { it.isFile && it.length() > 0L }
+                                                .distinctBy { it.absolutePath }
+                                        if (ordered.isEmpty()) null else mergeAudioSegmentsToWav(ordered)
                                     }
-                                    else -> listOf(local).filter { it.isFile && it.length() > 0L }
+                                    else -> local.takeIf { it.isFile && it.length() > 0L }
                                 }
-                            if (audioFiles.isEmpty()) return@forEach
-                            val transcript = repository.uploadAudio(created.id, audioFiles)
-                            latestTranscriptText = transcript.content
-                            // 오디오 업로드 응답에 서버 파일 경로 필드 없음 → serverFilePaths에 저장하지 않음
+                            if (audioFile == null) return@forEach
+                            audioFilesToUpload.add(audioFile)
+                            if (file.type == SelectedSourceFile.Type.AUDIO_RECORD) {
+                                tempGeneratedAudioFiles.add(audioFile)
+                            }
                         }
                         SelectedSourceFile.Type.IMAGE,
                         SelectedSourceFile.Type.DOCUMENT -> {
@@ -452,6 +477,16 @@ class MeetingSessionViewModel(
                         }
                     }
                 }
+
+                try {
+                    if (audioFilesToUpload.isNotEmpty()) {
+                        val transcript = repository.uploadAudioFiles(created.id, audioFilesToUpload)
+                        latestTranscriptText = transcript.content
+                        // 오디오 업로드 응답에 서버 파일 경로 필드 없음 → serverFilePaths에 저장하지 않음
+                    }
+                } finally {
+                    tempGeneratedAudioFiles.forEach { it.delete() }
+                }
             }
             val summary =
                 withContext(Dispatchers.IO) {
@@ -462,46 +497,218 @@ class MeetingSessionViewModel(
                 it.copy(
                     status = MeetingStatus.COMPLETED,
                     serverFilePaths = uploadedServerPaths,
-                    summary = ui.summaryText,
+                    summary = ui.summary,
                 )
             }
             _minutes.value = ui
-        } catch (_: Exception) {
-            // [테스트 전용] 서버 미기동·타임아웃·연결 오류 시에도 UI/파이프라인 동작을 검증하기 위해
-            // COMPLETED + 더미 요약으로 맞춘다. SummaryCompletionMode.TEST_NETWORK_FALLBACK 으로 UI에서 구분.
-            // TODO(운영): 실패 시 Meeting.status = FAILED, 더미 요약 대신 오류 메시지·재시도 등으로 처리할 것.
-            lastSummarizeUsedFallback = true
-            _pipelineError.postValue(null)
-            val dummy = buildDummyMinutes(snapshot, selected)
+        } catch (e: Exception) {
+            // 실 테스트 모드: 네트워크/서버 오류는 더미 성공 처리하지 않고 실패로 표시한다.
+            val message = buildPipelineErrorMessage(e)
+            _pipelineError.postValue(message)
             patchCurrentMeeting {
                 it.copy(
-                    status = MeetingStatus.COMPLETED,
-                    summary = dummy.summaryText,
+                    status = MeetingStatus.FAILED,
+                    summary = null,
                 )
             }
-            _minutes.value = dummy
+            _minutes.postValue(null)
         }
     }
 
-    private fun buildDummyMinutes(snapshot: MeetingDraft, files: List<SelectedSourceFile>): MinutesUiModel {
-        val now = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault()).format(Date())
-        val title = snapshot.title.trim().ifBlank { "더미 회의" }
-        val summaryBody =
-            "서버 비연결 상태로 더미 요약을 생성했습니다. 실제 연동 시에는 STT·요약 API 결과가 표시됩니다."
-        val usedSources = files.joinToString(", ") { it.displayName }
-        return MinutesUiModel(
-            subject = title,
-            datetime = snapshot.displayDatetime().takeIf { it != "—" } ?: now,
-            attendees = "김모아, 이기록, 박요약",
-            summaryText = summaryBody,
-            agenda = "• 앱 UI 검증\n• 더미 파이프라인 점검\n• 서버 재연결 전 체크리스트 정리",
-            discussion = buildString {
-                append(summaryBody)
-                append("\n\n선택 소스: ${usedSources.ifBlank { "없음" }}")
-            },
-            note = "현재 STT 서버가 닫혀 있어 로컬 더미 모드로 동작 중입니다.",
-            followup = "• 서버 오픈 후 실데이터 리그레션 테스트\n• 공유/저장 기능 QA",
-            writerLabel = "작성자: MOA (DUMMY)",
-        )
+    private fun buildPipelineErrorMessage(error: Exception): String {
+        if (error is HttpException) {
+            val body = error.response()?.errorBody()?.string()?.trim().orEmpty()
+            if (body.isNotBlank()) {
+                return "HTTP ${error.code()}: $body"
+            }
+            return "HTTP ${error.code()}: 서버 요청 형식 검증에 실패했습니다."
+        }
+        return error.message?.takeIf { it.isNotBlank() } ?: "요약 요청 중 오류가 발생했습니다."
+    }
+
+    private fun mergeAudioSegmentsToWav(segments: List<File>): File {
+        require(segments.isNotEmpty()) { "No segment files to merge." }
+        val output =
+            File.createTempFile(
+                "moa_merged_${System.currentTimeMillis()}_",
+                ".wav",
+                segments.first().parentFile,
+            )
+        FileOutputStream(output).use { fos ->
+            // WAV 헤더 자리 확보(44 bytes), 데이터 크기 확정 후 덮어쓴다.
+            fos.write(ByteArray(44))
+            var totalPcmBytes = 0L
+            var sampleRateHz = 16_000
+            var channelCount = 1
+            var bitsPerSample = 16
+            var hasAudio = false
+
+            segments.forEach { segment ->
+                val extractor = MediaExtractor()
+                var codec: MediaCodec? = null
+                try {
+                    extractor.setDataSource(segment.absolutePath)
+                    val trackIndex =
+                        (0 until extractor.trackCount).firstOrNull { idx ->
+                            extractor.getTrackFormat(idx).getString(MediaFormat.KEY_MIME)
+                                ?.startsWith("audio/") == true
+                        } ?: return@forEach
+                    extractor.selectTrack(trackIndex)
+                    val format = extractor.getTrackFormat(trackIndex)
+                    val mime = format.getString(MediaFormat.KEY_MIME) ?: return@forEach
+
+                    val sr = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                    val ch = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                    val bps =
+                        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                            when (format.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
+                                2 -> 16 // ENCODING_PCM_16BIT
+                                4 -> 32 // ENCODING_PCM_FLOAT
+                                else -> 16
+                            }
+                        } else {
+                            16
+                        }
+
+                    if (!hasAudio) {
+                        sampleRateHz = sr
+                        channelCount = ch
+                        bitsPerSample = bps
+                        hasAudio = true
+                    } else {
+                        require(sampleRateHz == sr && channelCount == ch) {
+                            "Segment audio format mismatch."
+                        }
+                    }
+
+                    codec = MediaCodec.createDecoderByType(mime)
+                    codec.configure(format, null, null, 0)
+                    codec.start()
+
+                    val info = MediaCodec.BufferInfo()
+                    var inputDone = false
+                    var outputDone = false
+
+                    while (!outputDone) {
+                        if (!inputDone) {
+                            val inputIndex = codec.dequeueInputBuffer(10_000)
+                            if (inputIndex >= 0) {
+                                val inputBuffer = codec.getInputBuffer(inputIndex) ?: continue
+                                val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                                if (sampleSize < 0) {
+                                    codec.queueInputBuffer(
+                                        inputIndex,
+                                        0,
+                                        0,
+                                        0L,
+                                        MediaCodec.BUFFER_FLAG_END_OF_STREAM,
+                                    )
+                                    inputDone = true
+                                } else {
+                                    codec.queueInputBuffer(
+                                        inputIndex,
+                                        0,
+                                        sampleSize,
+                                        extractor.sampleTime,
+                                        0,
+                                    )
+                                    extractor.advance()
+                                }
+                            }
+                        }
+
+                        val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
+                        when {
+                            outputIndex >= 0 -> {
+                                val outputBuffer = codec.getOutputBuffer(outputIndex)
+                                if (outputBuffer != null && info.size > 0) {
+                                    outputBuffer.position(info.offset)
+                                    outputBuffer.limit(info.offset + info.size)
+                                    val chunk = ByteArray(info.size)
+                                    outputBuffer.get(chunk)
+                                    fos.write(chunk)
+                                    totalPcmBytes += info.size.toLong()
+                                }
+                                codec.releaseOutputBuffer(outputIndex, false)
+                                if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                                    outputDone = true
+                                }
+                            }
+                            outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                                val outFormat = codec.outputFormat
+                                if (outFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                                    bitsPerSample =
+                                        when (outFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
+                                            2 -> 16
+                                            4 -> 32
+                                            else -> bitsPerSample
+                                        }
+                                }
+                            }
+                        }
+                    }
+                } finally {
+                    try {
+                        codec?.stop()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        codec?.release()
+                    } catch (_: Exception) {
+                    }
+                    extractor.release()
+                }
+            }
+
+            require(totalPcmBytes > 0L) { "No decodable PCM data from audio segments." }
+            writeWavHeader(
+                output = output,
+                pcmDataSize = totalPcmBytes,
+                sampleRateHz = sampleRateHz,
+                channelCount = channelCount,
+                bitsPerSample = bitsPerSample,
+            )
+        }
+        return output
+    }
+
+    private fun writeWavHeader(
+        output: File,
+        pcmDataSize: Long,
+        sampleRateHz: Int,
+        channelCount: Int,
+        bitsPerSample: Int,
+    ) {
+        val byteRate = sampleRateHz * channelCount * bitsPerSample / 8
+        val blockAlign = channelCount * bitsPerSample / 8
+        RandomAccessFile(output, "rw").use { raf ->
+            raf.seek(0)
+            raf.writeBytes("RIFF")
+            raf.writeIntLE((36L + pcmDataSize).toInt())
+            raf.writeBytes("WAVE")
+            raf.writeBytes("fmt ")
+            raf.writeIntLE(16)
+            // PCM(1) / Float(3)
+            raf.writeShortLE(if (bitsPerSample == 32) 3 else 1)
+            raf.writeShortLE(channelCount.toShort().toInt())
+            raf.writeIntLE(sampleRateHz)
+            raf.writeIntLE(byteRate)
+            raf.writeShortLE(blockAlign.toShort().toInt())
+            raf.writeShortLE(bitsPerSample.toShort().toInt())
+            raf.writeBytes("data")
+            raf.writeIntLE(pcmDataSize.toInt())
+        }
+    }
+
+    private fun RandomAccessFile.writeIntLE(value: Int) {
+        write(value and 0xFF)
+        write(value shr 8 and 0xFF)
+        write(value shr 16 and 0xFF)
+        write(value shr 24 and 0xFF)
+    }
+
+    private fun RandomAccessFile.writeShortLE(value: Int) {
+        write(value and 0xFF)
+        write(value shr 8 and 0xFF)
     }
 }

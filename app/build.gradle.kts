@@ -1,6 +1,21 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
 }
+
+val localProps = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        FileInputStream(localFile).use { load(it) }
+    }
+}
+
+val moaApiBaseUrl =
+    (project.findProperty("MOA_API_BASE_URL") as String?)
+        ?: localProps.getProperty("MOA_API_BASE_URL")
+        ?: "http://10.0.2.2:8000/"
 
 android {
     namespace = "com.example.a20260310"
@@ -22,7 +37,7 @@ android {
         buildConfigField(
             "String",
             "MOA_API_BASE_URL",
-            "\"http://10.0.2.2:8000/\"",
+            "\"$moaApiBaseUrl\"",
         )
     }
 

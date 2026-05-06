@@ -27,6 +27,8 @@ class SummarizingFragment : Fragment(R.layout.fragment_summarizing) {
         val meetingTitleText = view.findViewById<TextView>(R.id.summarizingMeetingTitle)
         val etaText = view.findViewById<TextView>(R.id.etaText)
 
+        // 이전 요약 결과가 남아 있으면 observe 즉시 트리거로 결과 화면으로 튈 수 있어 먼저 초기화한다.
+        sessionViewModel.clearMinutes()
         sessionViewModel.startSummarizePipeline()
 
         sessionViewModel.summaryProgress.observe(viewLifecycleOwner) { state ->

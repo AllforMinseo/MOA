@@ -28,7 +28,9 @@ data class MinutesUiModel(
     val subject: String,
     val datetime: String,
     val attendees: String,
-    /** LLM 요약 본문 (회의 요약 카드용) */
+    /** 구조화 요약 (SummaryFragment에서 직접 접근) */
+    val summary: MeetingSummary,
+    /** LLM 요약 본문 (회의 요약 카드용, 호환 유지) */
     val summaryText: String,
     val agenda: String,
     val discussion: String,
@@ -44,6 +46,7 @@ object MinutesUiMapper {
         response: SummaryGenerateResponseDto,
     ): MinutesUiModel {
         val payload = response.summary
+        val summary = payload.toDomain()
         val agenda = when {
             payload.decisions.isNotEmpty() ->
                 payload.decisions.joinToString("\n") { "• $it" }
@@ -71,6 +74,7 @@ object MinutesUiMapper {
             subject = draft.title.trim().ifBlank { "—" },
             datetime = draft.displayDatetime(),
             attendees = draft.attendees.trim().ifBlank { "—" },
+            summary = summary,
             summaryText = payload.summary.trim().ifBlank { "—" },
             agenda = agenda,
             discussion = discussion,
