@@ -1,5 +1,10 @@
-# 유틸리티 패키지.
-# 전처리, 오디오 변환, 보안 등 공통 함수를 제공합니다.
+"""
+utils 패키지 초기화 파일
+
+역할
+- 전처리, 오디오 변환, 보안, 인증 의존성 등 공통 함수를 제공
+- 다른 계층에서 공통 유틸 함수를 쉽게 import할 수 있도록 정리
+"""
 
 from .preprocess import (
     collapse_internal_repetition,
@@ -24,6 +29,11 @@ from .security import (
     verify_password,
 )
 
+from .auth_dependency import (
+    get_current_user,
+)
+
+
 __all__ = [
     # preprocess
     "preprocess_audio_file",
@@ -44,4 +54,7 @@ __all__ = [
     "hash_password",
     "verify_password",
     "create_access_token",
+
+    # auth dependency
+    "get_current_user",
 ]
