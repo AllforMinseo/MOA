@@ -93,10 +93,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         btn.setPadding(40, 16, 40, 16)
 
         btn.strokeWidth = 2
-        btn.strokeColor = ContextCompat.getColorStateList(requireContext(), R.color.moa_line)
+        btn.strokeColor = ContextCompat.getColorStateList(requireContext(), R.color.color_divider)
 
-        btn.setBackgroundColor(resources.getColor(R.color.moa_bg, null))
-        btn.setTextColor(resources.getColor(R.color.moa_orange_soft, null))
+        btn.setBackgroundColor(resources.getColor(R.color.color_background, null))
+        btn.setTextColor(resources.getColor(R.color.color_text_secondary, null))
 
         btn.setOnClickListener {
             selectedFolder = name
@@ -112,11 +112,11 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             val btn = folderTabs.getChildAt(i) as MaterialButton
 
             if (btn.text == selectedFolder) {
-                btn.setBackgroundColor(resources.getColor(R.color.moa_orange, null))
+                btn.setBackgroundColor(resources.getColor(R.color.color_primary, null))
                 btn.setTextColor(resources.getColor(android.R.color.white, null))
             } else {
-                btn.setBackgroundColor(resources.getColor(R.color.moa_bg, null))
-                btn.setTextColor(resources.getColor(R.color.moa_orange_soft, null))
+                btn.setBackgroundColor(resources.getColor(R.color.color_text_primary, null))
+                btn.setTextColor(resources.getColor(R.color.color_text_secondary, null))
             }
         }
     }

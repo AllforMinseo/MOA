@@ -63,8 +63,8 @@
 
             <ImageButton
                 android:id="@+id/removeButton"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="6dp"
                 android:background="@drawable/bg_remove_circle"
