@@ -5,6 +5,7 @@
     <color name="text_primary">#FF000000</color>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     <!-- Gray scale (900 darkest → 100 lightest) -->
     <color name="gray_900">#FF111111</color>
     <color name="gray_800">#FF222222</color>
@@ -25,6 +26,8 @@
     <color name="moa_text_primary">#1C1C1C</color>
     <color name="moa_text_secondary">#666666</color>
 =======
+=======
+>>>>>>> parent of 6c4e7b8 (feat: 로그인 더미 페이지, 배치 수정, 컬러수정)
     <!-- Base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
@@ -50,5 +53,8 @@
     <color name="gray_cc">#FFCCCCCC</color>
     <color name="gray_dd">#FFDDDDDD</color>
     <color name="gray_ee">#FFEEEEEE</color>
+<<<<<<< HEAD
+>>>>>>> parent of 6c4e7b8 (feat: 로그인 더미 페이지, 배치 수정, 컬러수정)
+=======
 >>>>>>> parent of 6c4e7b8 (feat: 로그인 더미 페이지, 배치 수정, 컬러수정)
 </resources>
