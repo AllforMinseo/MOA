@@ -266,12 +266,12 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
         preview.scaleType = ImageView.ScaleType.FIT_CENTER
         when (file.type) {
             SelectedSourceFile.Type.AUDIO_RECORD,
-            SelectedSourceFile.Type.AUDIO_UPLOAD -> preview.setImageResource(R.drawable.moa_microphone)
+            SelectedSourceFile.Type.AUDIO_UPLOAD -> preview.setImageResource(R.drawable.ic_recording)
             SelectedSourceFile.Type.IMAGE -> {
                 val f = File(file.localPath)
-                if (f.exists()) preview.setImageURI(Uri.fromFile(f)) else preview.setImageResource(R.drawable.moa_camera)
+                if (f.exists()) preview.setImageURI(Uri.fromFile(f)) else preview.setImageResource(R.drawable.ic_camera)
             }
-            SelectedSourceFile.Type.DOCUMENT -> preview.setImageResource(R.drawable.moa_document)
+            SelectedSourceFile.Type.DOCUMENT -> preview.setImageResource(R.drawable.ic_document)
         }
 
         remove.setOnClickListener { sessionViewModel.removeSelectedFile(file.id) }

@@ -49,7 +49,7 @@
                 <ImageView
                     android:layout_width="100dp"
                     android:layout_height="100dp"
-                    android:src="@drawable/moa_folder"
+                    android:src="@drawable/ic_folder"
                     />
 
                 <TextView
@@ -81,7 +81,7 @@
                 <ImageView
                     android:layout_width="100dp"
                     android:layout_height="100dp"
-                    android:src="@drawable/moa_add_folder"
+                    android:src="@drawable/ic_add_folder"
                     />
 
                 <TextView
@@ -108,7 +108,7 @@
         style="@style/AppButtonPrimary"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/add_next"
+        android:text="@string/select"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
