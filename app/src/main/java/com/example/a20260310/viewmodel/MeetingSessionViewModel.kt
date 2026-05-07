@@ -121,6 +121,17 @@ class MeetingSessionViewModel(
     private val _currentMeeting = MutableLiveData<Meeting?>(null)
     val currentMeeting: LiveData<Meeting?> = _currentMeeting
 
+    private val _currentMeetingTitle = MutableLiveData("회의")
+    val currentMeetingTitle: LiveData<String> = _currentMeetingTitle
+
+    fun setCurrentMeetingTitle(title: String) {
+        _currentMeetingTitle.value = title.trim().ifBlank { "회의" }
+    }
+
+    fun clearCurrentMeetingTitle() {
+        _currentMeetingTitle.value = "회의"
+    }
+
     private val _summaryProgress = MutableLiveData(SummaryProgressState.idle())
     val summaryProgress: LiveData<SummaryProgressState> = _summaryProgress
 
@@ -154,6 +165,8 @@ class MeetingSessionViewModel(
     fun setDraft(newDraft: MeetingDraft) {
         draft = newDraft
         _meetingDraft.value = newDraft
+        _currentMeetingTitle.value = newDraft.title.trim().ifBlank { "회의" }
+
         _currentMeeting.value =
             Meeting(
                 id = UUID.randomUUID().toString(),

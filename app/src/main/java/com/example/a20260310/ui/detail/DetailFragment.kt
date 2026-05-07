@@ -1,11 +1,15 @@
 package com.example.a20260310.ui.detail
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.webkit.MimeTypeMap
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -14,6 +18,15 @@ import com.example.a20260310.data.model.SimpleRow
 import com.example.a20260310.ui.common.SimpleRowAdapter
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import org.json.JSONArray
+import java.io.File
+import java.util.Locale
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.FileInputStream
+import java.io.OutputStream
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
 
@@ -29,12 +42,9 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         val summaryScroll = view.findViewById<ScrollView>(R.id.summaryScroll)
 
         val meetingTitle = arguments?.getString("meetingTitle") ?: "회의"
-        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
 
         title.text = meetingTitle
         recycler.layoutManager = LinearLayoutManager(requireContext())
-
-        // ================= 카드 연결 =================
 
         setupCard(
             parentView = view,
@@ -72,9 +82,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             scrollView = summaryScroll
         )
 
-        // ================= 탭 =================
-
         updateTabs(summaryBtn, fileBtn)
+        showSummary(summaryScroll, recycler)
 
         summaryBtn.setOnClickListener {
             isSummaryTab = true
@@ -89,8 +98,6 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         }
     }
 
-    // ================= 카드 공통 처리 =================
-
     private fun setupCard(
         parentView: View,
         cardId: Int,
@@ -100,7 +107,6 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         scrollView: ScrollView
     ) {
         val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-
         val card = parentView.findViewById<View>(cardId)
 
         val title = card.findViewById<TextView>(R.id.cardTitle)
@@ -108,10 +114,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         val saveBtn = card.findViewById<View>(R.id.btnSave)
         val editText = card.findViewById<TextInputEditText>(R.id.cardContent)
 
-        // 🔥 제목 설정
         title.text = titleText
-
-        // 🔥 내용 세팅
         editText.setText(prefs.getString(prefKey, defaultText))
 
         editBtn.setOnClickListener {
@@ -134,7 +137,6 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
         saveBtn.setOnClickListener {
             val text = editText.text.toString()
-
             prefs.edit().putString(prefKey, text).apply()
 
             editText.isFocusable = false
@@ -154,17 +156,13 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         }
     }
 
-    // ================= 탭 UI =================
-
     private fun updateTabs(summaryBtn: MaterialButton, fileBtn: MaterialButton) {
-
         if (isSummaryTab) {
             fileBtn.setBackgroundColor(resources.getColor(R.color.color_on_primary, null))
             fileBtn.setTextColor(resources.getColor(android.R.color.black, null))
 
             summaryBtn.setBackgroundColor(resources.getColor(R.color.color_primary, null))
             summaryBtn.setTextColor(resources.getColor(R.color.color_on_primary, null))
-
         } else {
             summaryBtn.setBackgroundColor(resources.getColor(R.color.color_on_primary, null))
             summaryBtn.setTextColor(resources.getColor(android.R.color.black, null))
@@ -185,23 +183,193 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
         val files = loadFiles()
 
-        recycler.adapter = SimpleRowAdapter(files) {
-            Toast.makeText(requireContext(), "${it.title} 다운로드", Toast.LENGTH_SHORT).show()
+        recycler.adapter = SimpleRowAdapter(files) { row ->
+            downloadFile(row.title)
         }
     }
 
-    // ================= 파일 =================
-
     private fun loadFiles(): List<SimpleRow> {
-
         val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-        val baseDir = requireContext().filesDir
-        val meetingTitle = arguments?.getString("meetingTitle")
+        val meetingTitle = arguments?.getString("meetingTitle") ?: return emptyList()
+        val key = "meeting_files_$meetingTitle"
+        val json = prefs.getString(key, "[]") ?: "[]"
+        val array = JSONArray(json)
 
-        return baseDir.walkTopDown()
-            .filter { it.isFile && it.name.endsWith(".m4a") }
-            .filter { prefs.getString(it.name, "") == meetingTitle }
-            .map { SimpleRow(it.name, "${it.length() / 1024} KB") }
-            .toList()
+        val items = mutableListOf<SimpleRow>()
+
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            val displayName = obj.optString("displayName")
+            val localPath = obj.optString("localPath")
+            val size = obj.optLong("size", 0L)
+
+            val file = File(localPath)
+            if (file.exists()) {
+                items.add(
+                    SimpleRow(
+                        title = displayName.ifBlank { file.name },
+                        subtitle = formatFileSize(size)
+                    )
+                )
+            }
+        }
+
+        return items
+    }
+
+    private fun openFile(displayName: String) {
+        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
+        val meetingTitle = arguments?.getString("meetingTitle") ?: return
+        val key = "meeting_files_$meetingTitle"
+        val json = prefs.getString(key, "[]") ?: "[]"
+        val array = JSONArray(json)
+
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            if (obj.optString("displayName") == displayName) {
+                val localPath = obj.optString("localPath")
+                val file = File(localPath)
+
+                if (!file.exists()) {
+                    Toast.makeText(requireContext(), "파일이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                val uri = FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().packageName}.fileprovider",
+                    file
+                )
+
+                val mime = getMimeType(file)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, mime)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                runCatching {
+                    startActivity(intent)
+                }.onFailure {
+                    Toast.makeText(requireContext(), "열 수 있는 앱이 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+        }
+
+        Toast.makeText(requireContext(), "파일 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun getMimeType(file: File): String {
+        val ext = file.extension.lowercase(Locale.ROOT)
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+            ?: when (ext) {
+                "pdf" -> "application/pdf"
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                "m4a" -> "audio/mp4"
+                "mp3" -> "audio/mpeg"
+                "wav" -> "audio/wav"
+                "aac" -> "audio/aac"
+                "mp4" -> "audio/mp4"
+                else -> "*/*"
+            }
+    }
+
+    private fun formatFileSize(size: Long): String {
+        if (size < 1024) return "${size} B"
+        if (size < 1024 * 1024) return "${size / 1024} KB"
+        return String.format(Locale.getDefault(), "%.1f MB", size / 1024f / 1024f)
+    }
+
+    private fun downloadFile(displayName: String) {
+        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
+        val meetingTitle = arguments?.getString("meetingTitle") ?: return
+        val key = "meeting_files_$meetingTitle"
+        val json = prefs.getString(key, "[]") ?: "[]"
+        val array = JSONArray(json)
+
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            if (obj.optString("displayName") == displayName) {
+                val localPath = obj.optString("localPath")
+                val file = File(localPath)
+
+                if (!file.exists()) {
+                    Toast.makeText(requireContext(), "파일이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                val success = copyFileToDownloads(file)
+                if (success) {
+                    Toast.makeText(requireContext(), "다운로드 완료", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "다운로드 실패", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+        }
+
+        Toast.makeText(requireContext(), "파일 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun copyFileToDownloads(sourceFile: File): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            copyFileToDownloadsApi29Plus(sourceFile)
+        } else {
+            copyFileToDownloadsLegacy(sourceFile)
+        }
+    }
+
+    private fun copyFileToDownloadsApi29Plus(sourceFile: File): Boolean {
+        val resolver = requireContext().contentResolver
+        val mimeType = getMimeType(sourceFile)
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, sourceFile.name)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                Environment.DIRECTORY_DOWNLOADS + "/MOA"
+            )
+        }
+
+        val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+
+        return runCatching {
+            FileInputStream(sourceFile).use { input ->
+                resolver.openOutputStream(itemUri)?.use { output ->
+                    input.copyTo(output)
+                } ?: throw IllegalStateException("출력 스트림을 열 수 없습니다.")
+            }
+            true
+        }.getOrElse {
+            resolver.delete(itemUri, null, null)
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun copyFileToDownloadsLegacy(sourceFile: File): Boolean {
+        val downloadsDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val moaDir = File(downloadsDir, "MOA")
+
+        if (!moaDir.exists()) {
+            moaDir.mkdirs()
+        }
+
+        val targetFile = File(moaDir, sourceFile.name)
+
+        return runCatching {
+            FileInputStream(sourceFile).use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            true
+        }.getOrElse {
+            false
+        }
     }
 }

@@ -36,6 +36,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 fun getCurrentFileName(): String {
     val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
@@ -551,6 +553,7 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
             Toast.makeText(requireContext(), R.string.recording_no_file, Toast.LENGTH_SHORT).show()
             return
         }
+
         stopPlaybackIfRunning()
         finalizeRecorderForSave()
 
@@ -565,11 +568,13 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
         val container = FrameLayout(requireContext()).apply {
             setPadding(pad, pad, pad, pad)
         }
+
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.recording_save_hint)
             val meetingTitle = sessionViewModel.meetingDraft.value?.title?.trim().orEmpty()
             setText(if (meetingTitle.isBlank()) "녹음파일" else "$meetingTitle 녹음파일")
         }
+
         container.addView(
             input,
             FrameLayout.LayoutParams(
@@ -589,6 +594,13 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
                         sessionViewModel.meetingDraft.value?.title?.trim().orEmpty()
                             .ifBlank { File(orderedPaths.first()).nameWithoutExtension }
                     }
+
+                val meetingTitle =
+                    sessionViewModel.currentMeetingTitle.value
+                        ?.trim()
+                        ?.ifBlank { "회의" }
+                        ?: "회의"
+
                 sessionViewModel.addSelectedFile(
                     SelectedSourceFile(
                         type = SelectedSourceFile.Type.AUDIO_RECORD,
@@ -597,6 +609,14 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
                         segmentLocalPaths = orderedPaths,
                     ),
                 )
+
+                saveRecordedFileToMeeting(
+                    meetingTitle = meetingTitle,
+                    displayName = displayName,
+                    localPath = orderedPaths.first(),
+                    segmentLocalPaths = orderedPaths,
+                )
+
                 d.dismiss()
                 findNavController().navigate(R.id.action_recordingFragment_to_addMethodFragment)
             }
@@ -643,5 +663,40 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
         if (!hasAudioPermission()) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 0)
         }
+    }
+
+    private fun saveRecordedFileToMeeting(
+        meetingTitle: String,
+        displayName: String,
+        localPath: String,
+        segmentLocalPaths: List<String>,
+    ) {
+        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
+        val key = "meeting_files_$meetingTitle"
+        val existing = prefs.getString(key, "[]") ?: "[]"
+        val array = JSONArray(existing)
+
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            if (obj.optString("localPath") == localPath) {
+                return
+            }
+        }
+
+        val file = File(localPath)
+        val segmentArray = JSONArray().apply {
+            segmentLocalPaths.forEach { put(it) }
+        }
+
+        val item = JSONObject().apply {
+            put("displayName", displayName)
+            put("localPath", localPath)
+            put("fileType", "AUDIO")
+            put("size", file.length())
+            put("segmentLocalPaths", segmentArray)
+        }
+
+        array.put(item)
+        prefs.edit().putString(key, array.toString()).apply()
     }
 }
