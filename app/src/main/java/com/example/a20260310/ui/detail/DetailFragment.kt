@@ -31,6 +31,7 @@ import java.io.OutputStream
 class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private var isSummaryTab = true
+    private var editingCardId: Int? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -117,17 +118,27 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         title.text = titleText
         editText.setText(prefs.getString(prefKey, defaultText))
 
+        editText.isFocusable = false
+        editText.isFocusableInTouchMode = false
+        editText.isCursorVisible = false
+        setCardFocus(card, false)
+
         editBtn.setOnClickListener {
+            editingCardId = cardId
+
             editBtn.visibility = View.GONE
             saveBtn.visibility = View.VISIBLE
 
+            editText.isFocusable = true
             editText.isFocusableInTouchMode = true
             editText.isCursorVisible = true
+            editText.isEnabled = true
             editText.requestFocus()
+
+            setCardFocus(card, true)
 
             val imm = requireContext()
                 .getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
-
             imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
 
             editText.post {
@@ -136,20 +147,22 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         }
 
         saveBtn.setOnClickListener {
-            val text = editText.text.toString()
+            val text = editText.text?.toString().orEmpty()
             prefs.edit().putString(prefKey, text).apply()
 
+            editingCardId = null
+            setCardFocus(card, false)
+
+            editText.clearFocus()
             editText.isFocusable = false
             editText.isFocusableInTouchMode = false
             editText.isCursorVisible = false
-            editText.clearFocus()
 
             editBtn.visibility = View.VISIBLE
             saveBtn.visibility = View.GONE
 
             val imm = requireContext()
                 .getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
-
             imm.hideSoftInputFromWindow(editText.windowToken, 0)
 
             Toast.makeText(requireContext(), "저장됨", Toast.LENGTH_SHORT).show()
@@ -280,6 +293,14 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         if (size < 1024) return "${size} B"
         if (size < 1024 * 1024) return "${size / 1024} KB"
         return String.format(Locale.getDefault(), "%.1f MB", size / 1024f / 1024f)
+    }
+
+    private fun setCardFocus(card: View, focused: Boolean) {
+        if (focused) {
+            card.setBackgroundResource(R.drawable.bg_card_editing)
+        } else {
+            card.setBackgroundResource(R.drawable.bg_card_normal)
+        }
     }
 
     private fun downloadFile(displayName: String) {

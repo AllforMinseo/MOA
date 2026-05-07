@@ -19,6 +19,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="TITLE"
+            android:textSize="20sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@id/btnEdit"
             app:layout_constraintTop_toTopOf="parent"/>
@@ -55,6 +56,7 @@
             android:focusable="false"
             android:cursorVisible="false"
             android:inputType="textMultiLine"
+            android:textSize="15sp"
 
             app:layout_constraintTop_toBottomOf="@id/cardTitle"
             app:layout_constraintStart_toStartOf="parent"

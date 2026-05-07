@@ -19,11 +19,11 @@
 
         <TextView
             android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:textSize="22sp"
             android:textStyle="bold"
-            android:textColor="@color/color_text_primary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:textColor="@color/color_text_primary" />
 
         <!-- 탭 -->
         <LinearLayout
@@ -40,7 +40,7 @@
                 android:text="요약"
                 app:cornerRadius="0dp"
                 app:strokeWidth="1dp"
-                app:strokeColor="@color/color_divider"/>
+                app:strokeColor="@color/color_divider" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/tabFiles"
@@ -50,7 +50,7 @@
                 android:text="파일"
                 app:cornerRadius="0dp"
                 app:strokeWidth="1dp"
-                app:strokeColor="@color/color_divider"/>
+                app:strokeColor="@color/color_divider" />
         </LinearLayout>
     </LinearLayout>
 
@@ -60,6 +60,11 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/topArea"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -68,25 +73,34 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="vertical">
 
-            <!-- ================= 요약 ================= -->
-            <include layout="@layout/item_editable_card"
-                android:id="@+id/cardSummary" />
+            <include
+                android:id="@+id/cardSummary"
+                layout="@layout/item_editable_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
 
-            <!-- ================= 결정 ================= -->
-            <include layout="@layout/item_editable_card"
-                android:id="@+id/cardDecisions" />
+            <include
+                android:id="@+id/cardDecisions"
+                layout="@layout/item_editable_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
 
-            <!-- ================= 할 일 ================= -->
-            <include layout="@layout/item_editable_card"
-                android:id="@+id/cardActions" />
+            <include
+                android:id="@+id/cardActions"
+                layout="@layout/item_editable_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
 
-            <!-- ================= 담당자 ================= -->
-            <include layout="@layout/item_editable_card"
-                android:id="@+id/cardParticipants" />
-
+            <include
+                android:id="@+id/cardParticipants"
+                layout="@layout/item_editable_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
         </LinearLayout>
     </ScrollView>
 
@@ -96,10 +110,11 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:padding="16dp"
+        android:clipToPadding="false"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/topArea"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
