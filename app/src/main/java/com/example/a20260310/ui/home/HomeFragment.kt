@@ -175,10 +175,19 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
 
         panelExpandedConfirmButton.setOnClickListener {
-            if (sessionViewModel.minutes.value != null) {
-                sessionViewModel.dismissSummaryProgressPanel()
-                findNavController().navigate(R.id.action_homeFragment_to_summaryFragment)
+            val state = sessionViewModel.summaryProgress.value ?: return@setOnClickListener
+            val meetingTitle = state.meetingTitle.trim().ifBlank { "회의" }
+
+            sessionViewModel.dismissSummaryProgressPanel()
+
+            val bundle = Bundle().apply {
+                putString("meetingTitle", meetingTitle)
             }
+
+            findNavController().navigate(
+                R.id.action_homeFragment_to_detailFragment,
+                bundle
+            )
         }
 
         summaryPanelHost.setOnClickListener {
@@ -186,12 +195,30 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             val expanded = sessionViewModel.summaryPanelExpanded.value == true
             val hasMinutes = sessionViewModel.minutes.value != null
             val waitingOnly = !state.isRunning && !state.isComplete && state.waitingCount > 0
+
             when {
+                state.isComplete && hasMinutes && !expanded -> {
+                    sessionViewModel.dismissSummaryProgressPanel()
+
+                    val bundle = Bundle().apply {
+                        putString("meetingTitle", state.meetingTitle)
+                    }
+
+                    findNavController().navigate(
+                        R.id.action_homeFragment_to_detailFragment,
+                        bundle
+                    )
+                }
+
                 state.isComplete && hasMinutes && expanded -> Unit
-                state.isComplete && hasMinutes && !expanded ->
+
+                waitingOnly && !expanded -> {
                     sessionViewModel.setSummaryPanelExpanded(true)
-                waitingOnly && !expanded -> sessionViewModel.setSummaryPanelExpanded(true)
-                !expanded -> sessionViewModel.setSummaryPanelExpanded(true)
+                }
+
+                !expanded -> {
+                    sessionViewModel.setSummaryPanelExpanded(true)
+                }
             }
         }
 
