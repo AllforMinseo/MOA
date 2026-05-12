@@ -15,6 +15,7 @@ from .summary_schema import (
     SummaryCreate,
     SummaryDetailResponse,
     SummaryGenerateResponse,
+    SummaryUpdateRequest,
     SummaryResponse,
 )
 from .transcript_schema import (
@@ -44,6 +45,7 @@ __all__ = [
     "SummaryCreate",
     "SummaryResponse",
     "SummaryGenerateResponse",
+    "SummaryUpdateRequest",
     "SummaryDetailResponse",
 
     # image

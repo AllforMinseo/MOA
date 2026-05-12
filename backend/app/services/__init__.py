@@ -41,6 +41,7 @@ from .meeting_service import (
     get_summary_for_meeting,
     remove_meeting,
     update_meeting_detail,
+    update_summary_for_meeting,
 )
 
 # stt
@@ -71,6 +72,7 @@ __all__ = [
     "create_summary_for_meeting",
     "get_summary_for_meeting",
     "get_full_transcript_for_meeting",
+    "update_summary_for_meeting",
 
     # stt
     "transcribe_audio_file",

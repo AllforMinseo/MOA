@@ -63,6 +63,28 @@ class SummaryGenerateResponse(BaseModel):
     summary: dict[str, Any]
 
 
+class SummaryUpdateRequest(BaseModel):
+    """
+    회의 summary 수정 요청 스키마
+
+    사용 위치
+    -------
+    PATCH /meetings/{meeting_id}/summary
+
+    요청 예시
+    --------
+    {
+        "summary": "수정된 회의 요약",
+        "decisions": ["수정된 결정사항 1", "수정된 결정사항 2"],
+        "action_items": ["수정된 할 일 1", "수정된 할 일 2"]
+    }
+    """
+
+    summary: str = Field(default="", description="회의 요약")
+    decisions: list[str] = Field(default_factory=list, description="결정사항 목록")
+    action_items: list[str] = Field(default_factory=list, description="할 일 목록")
+
+
 class SummaryDetailResponse(BaseModel):
     """
     회의 요약 조회 API 응답 스키마
@@ -75,3 +97,4 @@ class SummaryDetailResponse(BaseModel):
     summary: dict[str, Any]
     created_at: datetime
     updated_at: datetime
+

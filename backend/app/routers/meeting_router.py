@@ -34,6 +34,7 @@ from schemas.meeting_schema import (
 from schemas.summary_schema import (
     SummaryDetailResponse,
     SummaryGenerateResponse,
+    SummaryUpdateRequest,
 )
 from services.meeting_service import (
     create_new_meeting,
@@ -44,6 +45,7 @@ from services.meeting_service import (
     get_summary_for_meeting,
     remove_meeting,
     update_meeting_detail,
+    update_summary_for_meeting,
 )
 from utils.auth_dependency import get_current_user
 
@@ -279,6 +281,53 @@ def read_summary(
         )
 
     return summary
+
+
+@router.patch(
+    "/{meeting_id}/summary",
+    response_model=SummaryDetailResponse,
+    summary="회의 summary 수정",
+)
+def patch_summary(
+    meeting_id: int,
+    summary_data: SummaryUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SummaryDetailResponse:
+    """
+    현재 로그인한 사용자의 특정 회의 summary를 수정합니다.
+
+    사용 위치
+    -------
+    회의 상세 페이지에서 사용자가 요약/결정사항/할 일을 직접 수정할 때 사용합니다.
+
+    요청 예시
+    --------
+    {
+        "summary": "수정된 회의 요약",
+        "decisions": ["결정사항 1", "결정사항 2"],
+        "action_items": ["할 일 1", "할 일 2"]
+    }
+
+    인증
+    ----
+    Authorization: Bearer {access_token}
+    """
+
+    updated_summary = update_summary_for_meeting(
+        db=db,
+        meeting_id=meeting_id,
+        summary_data=summary_data,
+        current_user=current_user,
+    )
+
+    if updated_summary is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="수정할 summary를 찾을 수 없습니다.",
+        )
+
+    return updated_summary
 
 
 @router.get(

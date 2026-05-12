@@ -42,6 +42,7 @@ from repositories.summary_repository import (
     create_summary,
     delete_summary,
     get_summary_by_meeting_id,
+    update_summary,
 )
 from repositories.transcript_repository import get_transcripts_by_meeting_id
 from schemas.meeting_schema import (
@@ -53,6 +54,7 @@ from schemas.summary_schema import (
     SummaryCreate,
     SummaryDetailResponse,
     SummaryGenerateResponse,
+    SummaryUpdateRequest,
 )
 
 
@@ -479,4 +481,76 @@ def get_summary_for_meeting(
         summary=parsed_summary,
         created_at=summary.created_at,
         updated_at=summary.updated_at,
+    )
+
+
+def update_summary_for_meeting(
+    db: Session,
+    meeting_id: int,
+    summary_data: SummaryUpdateRequest,
+    current_user: User,
+) -> SummaryDetailResponse | None:
+    """
+    특정 회의의 summary를 수정
+
+    사용 위치
+    -------
+    PATCH /meetings/{meeting_id}/summary
+
+    동작 방식
+    --------
+    1. 현재 로그인한 사용자의 회의인지 확인
+    2. 해당 회의의 summary 조회
+    3. 프론트에서 보낸 summary 데이터를 dict로 구성
+    4. DB 저장용 JSON 문자열로 변환
+    5. 기존 summary.content 갱신
+    6. API 응답은 dict 형태로 반환
+    """
+
+    # 1. 현재 로그인한 사용자의 회의인지 확인
+    meeting = get_meeting_by_id_and_user_id(
+        db=db,
+        meeting_id=meeting_id,
+        user_id=current_user.id,
+    )
+
+    if meeting is None:
+        return None
+
+    # 2. 기존 summary 조회
+    summary = get_summary_by_meeting_id(
+        db=db,
+        meeting_id=meeting_id,
+    )
+
+    if summary is None:
+        return None
+
+    # 3. 프론트에서 받은 데이터를 dict로 구성
+    updated_summary_dict = {
+        "summary": summary_data.summary,
+        "decisions": summary_data.decisions,
+        "action_items": summary_data.action_items,
+    }
+
+    # 4. DB 저장용 JSON 문자열로 변환
+    summary_content = json.dumps(
+        updated_summary_dict,
+        ensure_ascii=False,
+    )
+
+    # 5. 기존 summary content 갱신
+    updated_summary = update_summary(
+        db=db,
+        summary=summary,
+        content=summary_content,
+    )
+
+    # 6. API 응답 반환
+    return SummaryDetailResponse(
+        id=updated_summary.id,
+        meeting_id=updated_summary.meeting_id,
+        summary=updated_summary_dict,
+        created_at=updated_summary.created_at,
+        updated_at=updated_summary.updated_at,
     )
