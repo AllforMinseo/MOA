@@ -39,8 +39,8 @@ data class ImageUploadResponseDto(
 
 data class ActionItemPayload(
     @SerializedName("task") val task: String = "",
-    @SerializedName("owner") val owner: String = "",
-    @SerializedName("deadline") val deadline: String = "",
+    @SerializedName(value = "assignee", alternate = ["owner"]) val owner: String = "",
+    @SerializedName(value = "due_date", alternate = ["deadline"]) val deadline: String = "",
 )
 
 data class LlmSummaryPayload(
