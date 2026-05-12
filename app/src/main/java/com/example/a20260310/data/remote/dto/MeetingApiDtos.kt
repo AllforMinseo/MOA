@@ -61,3 +61,9 @@ data class SummaryGenerateResponseDto(
     @SerializedName("updated_at")
     val updatedAt: String? = null,
 )
+
+data class SummaryUpdateRequestDto(
+
+    @SerializedName("summary")
+    val summary: LlmSummaryPayload
+)
