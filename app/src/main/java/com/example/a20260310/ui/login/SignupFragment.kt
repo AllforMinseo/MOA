@@ -8,13 +8,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.a20260310.R
 import com.example.a20260310.data.auth.TokenManager
+import com.example.a20260310.data.remote.ApiErrorParser
 import com.example.a20260310.data.repository.AuthRepository
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import retrofit2.HttpException
 
 class SignupFragment : Fragment(R.layout.fragment_signup) {
     companion object {
@@ -135,17 +134,7 @@ class SignupFragment : Fragment(R.layout.fragment_signup) {
     }
 
     private fun showError(error: Throwable) {
-        val message =
-            if (error is HttpException) {
-                error.response()?.errorBody()?.string()?.let { body ->
-                    runCatching {
-                        JSONObject(body).optString("detail").takeIf { it.isNotBlank() }
-                    }.getOrNull() ?: body.takeIf { it.isNotBlank() }
-                }
-            } else {
-                error.message
-            } ?: getString(R.string.signup_failed)
-
+        val message = ApiErrorParser.message(error, getString(R.string.signup_failed))
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 }

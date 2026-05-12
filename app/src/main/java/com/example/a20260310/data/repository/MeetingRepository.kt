@@ -25,8 +25,22 @@ class MeetingRepository(
         private const val TAG = "MeetingRepository"
     }
 
-    suspend fun createMeeting(title: String, description: String?): MeetingResponseDto {
-        return api.createMeeting(MeetingCreateRequest(title = title, description = description))
+    suspend fun createMeeting(
+        title: String,
+        meetingDate: String,
+        meetingTime: String,
+        attendees: List<String>,
+        description: String? = null,
+    ): MeetingResponseDto {
+        return api.createMeeting(
+            MeetingCreateRequest(
+                title = title,
+                meetingDate = meetingDate,
+                meetingTime = meetingTime,
+                attendees = attendees,
+                description = description,
+            )
+        )
     }
 
     suspend fun getMeetings(): List<MeetingResponseDto> {
@@ -55,10 +69,9 @@ class MeetingRepository(
         return try {
             api.uploadAudioFiles(meetingId, parts)
         } catch (e: HttpException) {
-            val errorBody = e.response()?.errorBody()?.string()?.trim().orEmpty()
             Log.e(
                 TAG,
-                "uploadAudioFiles failed code=${e.code()} path=/$path errorBody=$errorBody",
+                "uploadAudioFiles failed code=${e.code()} path=/$path",
             )
             throw e
         }

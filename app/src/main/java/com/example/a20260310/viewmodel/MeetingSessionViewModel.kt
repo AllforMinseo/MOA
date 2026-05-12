@@ -13,6 +13,7 @@ import com.example.a20260310.data.model.MeetingDraft
 import com.example.a20260310.data.model.MeetingStatus
 import com.example.a20260310.data.model.MinutesUiMapper
 import com.example.a20260310.data.model.MinutesUiModel
+import com.example.a20260310.data.remote.ApiErrorParser
 import com.example.a20260310.data.repository.MeetingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -451,7 +452,10 @@ class MeetingSessionViewModel(
                 withContext(Dispatchers.IO) {
                     repository.createMeeting(
                         title = snapshot.title.ifBlank { "무제 회의" },
-                        description = snapshot.toDescription(),
+                        meetingDate = snapshot.date.trim(),
+                        meetingTime = snapshot.time.trim(),
+                        attendees = snapshot.participantList(),
+                        description = null,
                     )
                 }
             _currentBackendMeetingId.postValue(created.id)
@@ -545,11 +549,11 @@ class MeetingSessionViewModel(
 
     private fun buildPipelineErrorMessage(error: Exception): String {
         if (error is HttpException) {
-            val body = error.response()?.errorBody()?.string()?.trim().orEmpty()
-            if (body.isNotBlank()) {
-                return "HTTP ${error.code()}: $body"
-            }
-            return "HTTP ${error.code()}: 서버 요청 형식 검증에 실패했습니다."
+            return ApiErrorParser.httpMessage(
+                error = error,
+                fallback = "서버 요청 형식 검증에 실패했습니다.",
+                includeCode = true,
+            )
         }
         return error.message?.takeIf { it.isNotBlank() } ?: "요약 요청 중 오류가 발생했습니다."
     }

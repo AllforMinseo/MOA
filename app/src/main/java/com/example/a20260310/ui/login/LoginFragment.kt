@@ -8,11 +8,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.a20260310.R
 import com.example.a20260310.data.auth.TokenManager
+import com.example.a20260310.data.remote.ApiErrorParser
 import com.example.a20260310.data.repository.AuthRepository
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 
 /**
  * 로그인 화면.
@@ -72,13 +72,7 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     }
 
     private fun showError(error: Throwable, fallbackRes: Int) {
-        val message =
-            if (error is HttpException) {
-                error.response()?.errorBody()?.string()?.takeIf { it.isNotBlank() }
-            } else {
-                error.message
-            } ?: getString(fallbackRes)
-
+        val message = ApiErrorParser.message(error, getString(fallbackRes))
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 }

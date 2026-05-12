@@ -369,7 +369,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 val items = meetings.map { meeting ->
                     SimpleRow(
                         title = meeting.title,
-                        subtitle = meeting.createdAt ?: meeting.updatedAt ?: "",
+                        subtitle = meeting.displayMeetingSchedule().ifBlank { "일정 없음" },
                         meetingId = meeting.id,
                     )
                 }
@@ -400,6 +400,13 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 recycler.adapter = SimpleRowAdapter(emptyList()) {}
             }
         }
+    }
+
+    private fun com.example.a20260310.data.remote.dto.MeetingResponseDto.displayMeetingSchedule(): String {
+        return listOfNotNull(
+            meetingDate?.trim()?.takeIf { it.isNotEmpty() },
+            meetingTime?.trim()?.takeIf { it.isNotEmpty() },
+        ).joinToString(" ")
     }
 }
 

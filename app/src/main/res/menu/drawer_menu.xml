@@ -7,7 +7,7 @@
             android:title="@string/nav_home" />
         <item
             android:id="@+id/historyFragment"
-            android:icon="@android:drawable/ic_menu_recent_history"
+            android:icon="@android:drawable/ic_menu_manage"
             android:title="@string/nav_history" />
     </group>
 </menu>

@@ -148,7 +148,7 @@ class MeetingCreateFragment : Fragment(R.layout.fragment_meeting_create) {
     }
 
     private fun buildFullTitle(body: String): String =
-        "${selectedDateStr.trim()} ${body.trim()}".trim()
+        body.trim()
 
     private fun createParticipantChip(group: ChipGroup, label: String): Chip {
         val chip = Chip(requireContext(), null, com.google.android.material.R.attr.chipStyle).apply {

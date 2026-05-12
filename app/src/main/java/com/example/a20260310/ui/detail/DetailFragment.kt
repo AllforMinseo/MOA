@@ -221,7 +221,13 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                     )
                 }
 
-                setCardText(parentView, R.id.cardParticipants, extractParticipants(meeting.description))
+                val participants =
+                    meeting.attendees
+                        .orEmpty()
+                        .joinToString(", ")
+                        .ifBlank { extractParticipants(meeting.description) }
+                        .ifBlank { "참석자 없음" }
+                setCardText(parentView, R.id.cardParticipants, participants)
             }.onFailure { error ->
                 if (error is HttpException && error.code() == 401) {
                     TokenManager.clear()

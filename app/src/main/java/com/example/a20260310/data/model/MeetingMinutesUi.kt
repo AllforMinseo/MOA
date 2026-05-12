@@ -8,12 +8,6 @@ data class MeetingDraft(
     val time: String = "",
     val attendees: String = "",
 ) {
-    fun toDescription(): String? = buildString {
-        val dt = "${date.trim()} ${time.trim()}".trim()
-        if (dt.isNotBlank()) appendLine("일시: $dt")
-        if (attendees.isNotBlank()) appendLine("참석자: $attendees")
-    }.trim().ifBlank { null }
-
     fun displayDatetime(): String {
         val dt = "${date.trim()} ${time.trim()}".trim()
         return dt.ifBlank { "—" }

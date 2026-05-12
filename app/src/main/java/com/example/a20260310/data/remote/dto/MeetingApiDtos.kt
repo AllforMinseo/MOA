@@ -4,12 +4,18 @@ import com.google.gson.annotations.SerializedName
 
 data class MeetingCreateRequest(
     val title: String,
+    @SerializedName("meeting_date") val meetingDate: String,
+    @SerializedName("meeting_time") val meetingTime: String,
+    @SerializedName("attendees") val attendees: List<String> = emptyList(),
     val description: String? = null,
 )
 
 data class MeetingResponseDto(
     @SerializedName("id") val id: Int,
     @SerializedName("title") val title: String,
+    @SerializedName("meeting_date") val meetingDate: String? = null,
+    @SerializedName("meeting_time") val meetingTime: String? = null,
+    @SerializedName("attendees") val attendees: List<String>? = emptyList(),
     @SerializedName("description") val description: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null,
