@@ -2,6 +2,7 @@ package com.example.a20260310.ui.history
 
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,7 +25,9 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
             layoutManager = LinearLayoutManager(context)
             adapter = SimpleRowAdapter(
                 items,
-                onClick = TODO()
+                onClick = {
+                    Toast.makeText(context, "서버 기록 조회 기능 준비 중입니다.", Toast.LENGTH_SHORT).show()
+                }
             )
         }
     }

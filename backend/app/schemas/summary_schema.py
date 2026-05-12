@@ -34,6 +34,29 @@ class SummaryCreate(BaseModel):
     content: str = Field(..., min_length=1, description="DB 저장용 요약 문자열")
 
 
+class ActionItemUpdate(BaseModel):
+    """
+    앱에서 수정한 action item 1건.
+    """
+
+    task: str = ""
+    owner: str = ""
+    deadline: str = ""
+
+
+class SummaryUpdate(BaseModel):
+    """
+    앱 상세 화면에서 수정한 summary payload.
+
+    DB에는 JSON 문자열로 저장하고, API 응답에서는 dict로 반환한다.
+    """
+
+    summary: str = ""
+    decisions: list[str] = Field(default_factory=list)
+    action_items: list[ActionItemUpdate] = Field(default_factory=list)
+    error: str | None = None
+
+
 
 class SummaryResponse(BaseModel):
     """

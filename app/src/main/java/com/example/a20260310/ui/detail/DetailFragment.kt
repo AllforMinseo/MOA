@@ -11,14 +11,22 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.a20260310.R
 import com.example.a20260310.data.model.SimpleRow
+import com.example.a20260310.data.remote.dto.ActionItemPayload
+import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
+import com.example.a20260310.data.auth.TokenManager
+import com.example.a20260310.data.repository.MeetingRepository
 import com.example.a20260310.ui.common.SimpleRowAdapter
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.launch
 import org.json.JSONArray
+import retrofit2.HttpException
 import java.io.File
 import java.util.Locale
 import android.content.ContentValues
@@ -32,6 +40,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private var isSummaryTab = true
     private var editingCardId: Int? = null
+    private val meetingRepository = MeetingRepository()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -42,6 +51,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         val recycler = view.findViewById<RecyclerView>(R.id.fileRecycler)
         val summaryScroll = view.findViewById<ScrollView>(R.id.summaryScroll)
 
+        val meetingId = arguments?.takeIf { it.containsKey("meetingId") }?.getInt("meetingId")
         val meetingTitle = arguments?.getString("meetingTitle") ?: "회의"
 
         title.text = meetingTitle
@@ -53,7 +63,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             titleText = "회의 요약",
             prefKey = "${meetingTitle}_summary",
             defaultText = "요약 없음",
-            scrollView = summaryScroll
+            scrollView = summaryScroll,
+            meetingId = meetingId,
         )
 
         setupCard(
@@ -62,7 +73,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             titleText = "결정 사항",
             prefKey = "${meetingTitle}_decisions",
             defaultText = "결정 사항 없음",
-            scrollView = summaryScroll
+            scrollView = summaryScroll,
+            meetingId = meetingId,
         )
 
         setupCard(
@@ -71,7 +83,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             titleText = "할 일",
             prefKey = "${meetingTitle}_actions",
             defaultText = "할 일 없음",
-            scrollView = summaryScroll
+            scrollView = summaryScroll,
+            meetingId = meetingId,
         )
 
         setupCard(
@@ -80,11 +93,16 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             titleText = "담당자",
             prefKey = "${meetingTitle}_participants",
             defaultText = "",
-            scrollView = summaryScroll
+            scrollView = summaryScroll,
+            meetingId = meetingId,
         )
 
         updateTabs(summaryBtn, fileBtn)
         showSummary(summaryScroll, recycler)
+
+        if (meetingId != null && meetingId > 0) {
+            loadRemoteDetail(view, meetingId, title)
+        }
 
         summaryBtn.setOnClickListener {
             isSummaryTab = true
@@ -105,7 +123,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         titleText: String,
         prefKey: String,
         defaultText: String,
-        scrollView: ScrollView
+        scrollView: ScrollView,
+        meetingId: Int?,
     ) {
         val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
         val card = parentView.findViewById<View>(cardId)
@@ -148,7 +167,9 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
         saveBtn.setOnClickListener {
             val text = editText.text?.toString().orEmpty()
-            prefs.edit().putString(prefKey, text).apply()
+            if (meetingId == null || meetingId <= 0) {
+                prefs.edit().putString(prefKey, text).apply()
+            }
 
             editingCardId = null
             setCardFocus(card, false)
@@ -165,8 +186,129 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                 .getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(editText.windowToken, 0)
 
-            Toast.makeText(requireContext(), "저장됨", Toast.LENGTH_SHORT).show()
+            if (meetingId != null && meetingId > 0) {
+                saveRemoteSummary(parentView, meetingId)
+            } else {
+                Toast.makeText(requireContext(), "저장됨", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+
+    private fun loadRemoteDetail(parentView: View, meetingId: Int, titleView: TextView) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                val meeting = meetingRepository.getMeeting(meetingId)
+                val summary = runCatching { meetingRepository.getSummary(meetingId) }.getOrNull()
+                meeting to summary
+            }.onSuccess { (meeting, summary) ->
+                titleView.text = meeting.title
+                summary?.summary?.let { payload ->
+                    setCardText(parentView, R.id.cardSummary, payload.summary.trim().ifBlank { "요약 없음" })
+                    setCardText(
+                        parentView,
+                        R.id.cardDecisions,
+                        payload.decisions.joinToString("\n").ifBlank { "결정 사항 없음" },
+                    )
+                    setCardText(
+                        parentView,
+                        R.id.cardActions,
+                        payload.actionItems.joinToString("\n") { item ->
+                            val task = item.task.trim().ifBlank { "—" }
+                            val owner = item.owner.trim().ifBlank { "미정" }
+                            val deadline = item.deadline.trim().ifBlank { "미정" }
+                            "$task (담당: $owner / 마감: $deadline)"
+                        }.ifBlank { "할 일 없음" },
+                    )
+                }
+
+                setCardText(parentView, R.id.cardParticipants, extractParticipants(meeting.description))
+            }.onFailure { error ->
+                if (error is HttpException && error.code() == 401) {
+                    TokenManager.clear()
+                    findNavController().navigate(R.id.loginFragment)
+                    return@onFailure
+                }
+                Toast.makeText(
+                    requireContext(),
+                    error.message ?: "회의 정보를 불러오지 못했습니다.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
+    private fun setCardText(parentView: View, cardId: Int, text: String) {
+        parentView.findViewById<View>(cardId)
+            .findViewById<TextInputEditText>(R.id.cardContent)
+            .setText(text)
+    }
+
+    private fun getCardText(parentView: View, cardId: Int): String {
+        return parentView.findViewById<View>(cardId)
+            .findViewById<TextInputEditText>(R.id.cardContent)
+            .text
+            ?.toString()
+            .orEmpty()
+    }
+
+    private fun extractParticipants(description: String?): String {
+        return description
+            ?.lineSequence()
+            ?.firstOrNull { it.startsWith("참석자:") }
+            ?.substringAfter("참석자:")
+            ?.trim()
+            .orEmpty()
+    }
+
+    private fun saveRemoteSummary(parentView: View, meetingId: Int) {
+        val request = SummaryUpdateRequest(
+            summary = getCardText(parentView, R.id.cardSummary),
+            decisions = cleanLines(getCardText(parentView, R.id.cardDecisions)),
+            actionItems = cleanLines(getCardText(parentView, R.id.cardActions)).map(::parseActionItem),
+        )
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                meetingRepository.updateSummary(meetingId, request)
+            }.onSuccess {
+                Toast.makeText(requireContext(), "저장됨", Toast.LENGTH_SHORT).show()
+            }.onFailure { error ->
+                if (error is HttpException && error.code() == 401) {
+                    TokenManager.clear()
+                    findNavController().navigate(R.id.loginFragment)
+                    return@onFailure
+                }
+                Toast.makeText(
+                    requireContext(),
+                    error.message ?: "요약 저장에 실패했습니다.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
+    private fun cleanLines(text: String): List<String> {
+        return text.lineSequence()
+            .map { it.trim().removePrefix("•").trim() }
+            .filter { it.isNotBlank() && it != "—" && !it.endsWith("없음") }
+            .toList()
+    }
+
+    private fun parseActionItem(line: String): ActionItemPayload {
+        val task = line.substringBefore(" (담당:").trim().ifBlank { line }
+        val owner = line.substringAfter("담당:", "")
+            .substringBefore("/")
+            .trim()
+            .ifBlank { "" }
+            .takeUnless { it == "미정" }
+            .orEmpty()
+        val deadline = line.substringAfter("마감:", "")
+            .substringBefore(")")
+            .trim()
+            .ifBlank { "" }
+            .takeUnless { it == "미정" }
+            .orEmpty()
+        return ActionItemPayload(task = task, owner = owner, deadline = deadline)
     }
 
     private fun updateTabs(summaryBtn: MaterialButton, fileBtn: MaterialButton) {

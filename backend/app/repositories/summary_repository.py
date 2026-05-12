@@ -79,7 +79,7 @@ def create_summary(db: Session, summary_data: SummaryCreate) -> Summary:
 def update_summary(
     db: Session,
     summary: Summary,
-    content: dict,
+    content: str,
 ) -> Summary:
     """
     기존 summary 내용 수정
@@ -92,7 +92,7 @@ def update_summary(
     summary : Summary
         수정할 Summary ORM 객체
 
-    content : dict
+    content : str
         새로 저장할 summary 내용
 
     Returns

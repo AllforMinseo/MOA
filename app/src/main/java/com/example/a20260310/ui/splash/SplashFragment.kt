@@ -7,13 +7,20 @@ import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.a20260310.R
+import com.example.a20260310.data.auth.TokenManager
 
 class SplashFragment : Fragment(R.layout.fragment_splash) {
     private val handler = Handler(Looper.getMainLooper())
     private val goNext = Runnable {
         val navController = findNavController()
         if (navController.currentDestination?.id == R.id.splashFragment) {
-            navController.navigate(R.id.action_splashFragment_to_loginFragment)
+            val action =
+                if (TokenManager.isLoggedIn()) {
+                    R.id.action_splashFragment_to_homeFragment
+                } else {
+                    R.id.action_splashFragment_to_loginFragment
+                }
+            navController.navigate(action)
         }
     }
 

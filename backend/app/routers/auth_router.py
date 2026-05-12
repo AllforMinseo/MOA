@@ -70,6 +70,24 @@ def register(
 
 
 @router.post(
+    "/signup",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def signup(
+    user_create: UserCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Android 클라이언트 호환용 회원가입 API.
+
+    내부 동작은 /auth/register와 동일하다.
+    """
+
+    return register_user(db, user_create)
+
+
+@router.post(
     "/login",
     response_model=TokenResponse,
 )

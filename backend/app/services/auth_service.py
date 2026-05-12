@@ -14,12 +14,46 @@ auth_service.py
 - username + password 사용
 """
 
+import re
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from repositories.user_repository import get_user_by_username, create_user
 from schemas.user_schema import UserCreate, UserLogin
 from utils.security import hash_password, verify_password, create_access_token
+
+
+USERNAME_PATTERN = re.compile(r"^[a-z][a-z0-9_.]{3,19}$")
+PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+=-]{8,32}$")
+
+
+def validate_signup_credentials(username: str, password: str) -> None:
+    """
+    회원가입 입력 규칙 검증.
+
+    username
+    - 4~20자
+    - 영문 소문자로 시작
+    - 영문 소문자, 숫자, _, . 만 허용
+
+    password
+    - 8~32자
+    - 영문/숫자 최소 1개씩 포함
+    - 지정된 특수문자는 선택 허용
+    """
+
+    if USERNAME_PATTERN.fullmatch(username) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="아이디 형식이 올바르지 않습니다.",
+        )
+
+    if PASSWORD_PATTERN.fullmatch(password) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="비밀번호는 영문과 숫자를 포함해야 합니다.",
+        )
 
 
 def register_user(db: Session, user_create: UserCreate):
@@ -37,13 +71,18 @@ def register_user(db: Session, user_create: UserCreate):
     비밀번호 원문은 절대 DB에 저장하지 않는다.
     """
 
+    validate_signup_credentials(
+        username=user_create.username,
+        password=user_create.password,
+    )
+
     # username 중복 확인
     existing_user = get_user_by_username(db, user_create.username)
 
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="이미 사용 중인 사용자 이름입니다.",
+            detail="이미 사용 중인 아이디입니다.",
         )
 
     # 비밀번호 해시 처리

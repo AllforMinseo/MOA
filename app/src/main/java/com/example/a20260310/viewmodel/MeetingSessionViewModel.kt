@@ -124,12 +124,16 @@ class MeetingSessionViewModel(
     private val _currentMeetingTitle = MutableLiveData("회의")
     val currentMeetingTitle: LiveData<String> = _currentMeetingTitle
 
+    private val _currentBackendMeetingId = MutableLiveData<Int?>(null)
+    val currentBackendMeetingId: LiveData<Int?> = _currentBackendMeetingId
+
     fun setCurrentMeetingTitle(title: String) {
         _currentMeetingTitle.value = title.trim().ifBlank { "회의" }
     }
 
     fun clearCurrentMeetingTitle() {
         _currentMeetingTitle.value = "회의"
+        _currentBackendMeetingId.value = null
     }
 
     private val _summaryProgress = MutableLiveData(SummaryProgressState.idle())
@@ -450,6 +454,7 @@ class MeetingSessionViewModel(
                         description = snapshot.toDescription(),
                     )
                 }
+            _currentBackendMeetingId.postValue(created.id)
             var latestTranscriptText = ""
             withContext(Dispatchers.IO) {
                 val audioFilesToUpload = mutableListOf<File>()

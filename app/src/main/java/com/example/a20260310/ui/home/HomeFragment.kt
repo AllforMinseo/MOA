@@ -32,8 +32,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.a20260310.data.auth.TokenManager
+import com.example.a20260310.data.repository.MeetingRepository
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
+
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
+    private val meetingRepository = MeetingRepository()
     private lateinit var recycler: RecyclerView
     private lateinit var folderTabs: LinearLayout
     private var selectedFolder: String = "전체"
@@ -181,6 +188,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             sessionViewModel.dismissSummaryProgressPanel()
 
             val bundle = Bundle().apply {
+                sessionViewModel.currentBackendMeetingId.value?.let {
+                    putInt("meetingId", it)
+                }
                 putString("meetingTitle", meetingTitle)
             }
 
@@ -201,6 +211,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                     sessionViewModel.dismissSummaryProgressPanel()
 
                     val bundle = Bundle().apply {
+                        sessionViewModel.currentBackendMeetingId.value?.let {
+                            putInt("meetingId", it)
+                        }
                         putString("meetingTitle", state.meetingTitle)
                     }
 
@@ -349,22 +362,43 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun loadList() {
-        val items = if (selectedFolder == "전체") {
-            getAllFiles(requireContext())
-        } else {
-            getFilesByFolder(requireContext(), selectedFolder)
-        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                meetingRepository.getMeetings()
+            }.onSuccess { meetings ->
+                val items = meetings.map { meeting ->
+                    SimpleRow(
+                        title = meeting.title,
+                        subtitle = meeting.createdAt ?: meeting.updatedAt ?: "",
+                        meetingId = meeting.id,
+                    )
+                }
 
-        recycler.adapter = SimpleRowAdapter(items) { item ->
+                recycler.adapter = SimpleRowAdapter(items) { item ->
+                    val bundle = Bundle().apply {
+                        item.meetingId?.let { putInt("meetingId", it) }
+                        putString("meetingTitle", item.title)
+                    }
 
-            val bundle = Bundle().apply {
-                putString("meetingTitle", item.title)
+                    findNavController().navigate(
+                        R.id.action_homeFragment_to_detailFragment,
+                        bundle
+                    )
+                }
+            }.onFailure { error ->
+                if (error is HttpException && error.code() == 401) {
+                    TokenManager.clear()
+                    findNavController().navigate(R.id.loginFragment)
+                    return@onFailure
+                }
+
+                Toast.makeText(
+                    requireContext(),
+                    error.message ?: "회의 목록을 불러오지 못했습니다.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                recycler.adapter = SimpleRowAdapter(emptyList()) {}
             }
-
-            findNavController().navigate(
-                R.id.action_homeFragment_to_detailFragment,
-                bundle
-            )
         }
     }
 }

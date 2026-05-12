@@ -4,11 +4,15 @@ import com.example.a20260310.data.remote.dto.MeetingCreateRequest
 import com.example.a20260310.data.remote.dto.ImageUploadResponseDto
 import com.example.a20260310.data.remote.dto.MeetingResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
+import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
+import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
@@ -22,6 +26,14 @@ import retrofit2.http.Path
 interface MeetingApiService {
     @POST("meetings")
     suspend fun createMeeting(@Body body: MeetingCreateRequest): MeetingResponseDto
+
+    @GET("meetings")
+    suspend fun getMeetings(): List<MeetingResponseDto>
+
+    @GET("meetings/{meetingId}")
+    suspend fun getMeeting(
+        @Path("meetingId") meetingId: Int,
+    ): MeetingResponseDto
 
     @Multipart
     @POST("upload/audio/{meetingId}")
@@ -42,4 +54,15 @@ interface MeetingApiService {
     suspend fun generateSummary(
         @Path("meetingId") meetingId: Int,
     ): SummaryGenerateResponseDto
+
+    @GET("meetings/{meetingId}/summary")
+    suspend fun getSummary(
+        @Path("meetingId") meetingId: Int,
+    ): SummaryDetailResponseDto
+
+    @PATCH("meetings/{meetingId}/summary")
+    suspend fun updateSummary(
+        @Path("meetingId") meetingId: Int,
+        @Body body: SummaryUpdateRequest,
+    ): SummaryDetailResponseDto
 }

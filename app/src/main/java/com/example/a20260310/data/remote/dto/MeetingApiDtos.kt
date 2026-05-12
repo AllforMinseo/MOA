@@ -48,3 +48,18 @@ data class SummaryGenerateResponseDto(
     @SerializedName("meeting_id") val meetingId: Int,
     @SerializedName("summary") val summary: LlmSummaryPayload,
 )
+
+data class SummaryDetailResponseDto(
+    @SerializedName("id") val id: Int,
+    @SerializedName("meeting_id") val meetingId: Int,
+    @SerializedName("summary") val summary: LlmSummaryPayload,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+)
+
+data class SummaryUpdateRequest(
+    @SerializedName("summary") val summary: String = "",
+    @SerializedName("decisions") val decisions: List<String> = emptyList(),
+    @SerializedName("action_items") val actionItems: List<ActionItemPayload> = emptyList(),
+    @SerializedName("error") val error: String? = null,
+)

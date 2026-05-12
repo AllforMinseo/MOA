@@ -18,6 +18,7 @@ Meeting 테이블에 대한 DB 접근 로직을 담당하는 Repository
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -51,10 +52,13 @@ def create_meeting(
         생성된 Meeting ORM 객체
     """
 
+    now = datetime.utcnow()
     meeting = Meeting(
         user_id=user_id,
         title=meeting_data.title,
         description=meeting_data.description,
+        created_at=now,
+        updated_at=now,
     )
 
     db.add(meeting)

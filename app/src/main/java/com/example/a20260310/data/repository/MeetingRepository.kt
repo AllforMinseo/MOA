@@ -6,7 +6,9 @@ import com.example.a20260310.data.remote.MeetingApiService
 import com.example.a20260310.data.remote.dto.ImageUploadResponseDto
 import com.example.a20260310.data.remote.dto.MeetingCreateRequest
 import com.example.a20260310.data.remote.dto.MeetingResponseDto
+import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
+import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -25,6 +27,14 @@ class MeetingRepository(
 
     suspend fun createMeeting(title: String, description: String?): MeetingResponseDto {
         return api.createMeeting(MeetingCreateRequest(title = title, description = description))
+    }
+
+    suspend fun getMeetings(): List<MeetingResponseDto> {
+        return api.getMeetings()
+    }
+
+    suspend fun getMeeting(meetingId: Int): MeetingResponseDto {
+        return api.getMeeting(meetingId)
     }
 
     suspend fun uploadAudioFiles(meetingId: Int, files: List<File>): TranscriptResponseDto {
@@ -93,5 +103,16 @@ class MeetingRepository(
 
     suspend fun generateSummary(meetingId: Int): SummaryGenerateResponseDto {
         return api.generateSummary(meetingId)
+    }
+
+    suspend fun getSummary(meetingId: Int): SummaryDetailResponseDto {
+        return api.getSummary(meetingId)
+    }
+
+    suspend fun updateSummary(
+        meetingId: Int,
+        request: SummaryUpdateRequest,
+    ): SummaryDetailResponseDto {
+        return api.updateSummary(meetingId, request)
     }
 }
