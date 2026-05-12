@@ -8,7 +8,9 @@ import com.example.a20260310.data.remote.dto.SummaryUpdateRequestDto
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -56,4 +58,9 @@ interface MeetingApiService {
         @Path("meeting_id") meetingId: Int,
         @Body request: SummaryUpdateRequestDto,
     ): SummaryGenerateResponseDto
+
+    @DELETE("meetings/{meetingId}")
+    suspend fun deleteMeeting(
+        @Path("meetingId") meetingId: Int
+    ): Response<Unit>
 }

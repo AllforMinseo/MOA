@@ -32,6 +32,7 @@ import org.json.JSONArray
 import java.io.File
 import java.io.FileInputStream
 import java.util.Locale
+import androidx.navigation.fragment.findNavController
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
 
@@ -133,6 +134,34 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
         view.findViewById<View>(R.id.btnEditAction3).setOnClickListener {
             showEditActionDialog(2)
+        }
+
+        view.findViewById<View>(R.id.btnDeleteMeeting).setOnClickListener {
+            showDeleteMeetingDialog()
+        }
+    }
+
+    private fun showDeleteMeetingDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("회의 삭제")
+            .setMessage("삭제하시겠습니까?")
+            .setPositiveButton("삭제") { _, _ ->
+                deleteMeeting()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    private fun deleteMeeting() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                RetrofitClient.api.deleteMeeting(meetingId)
+            }.onSuccess {
+                Toast.makeText(requireContext(), "회의가 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                findNavController().popBackStack()
+            }.onFailure {
+                Toast.makeText(requireContext(), "회의 삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
