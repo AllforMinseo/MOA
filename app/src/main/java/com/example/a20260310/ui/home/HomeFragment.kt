@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
+
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
     private lateinit var recycler: RecyclerView

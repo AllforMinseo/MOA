@@ -27,6 +27,11 @@ import android.os.Environment
 import android.provider.MediaStore
 import java.io.FileInputStream
 import java.io.OutputStream
+import androidx.lifecycle.lifecycleScope
+import com.example.a20260310.data.model.toDomain
+import com.example.a20260310.data.remote.RetrofitClient
+import kotlinx.coroutines.launch
+import androidx.annotation.RequiresApi
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
 
@@ -43,6 +48,12 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         val summaryScroll = view.findViewById<ScrollView>(R.id.summaryScroll)
 
         val meetingTitle = arguments?.getString("meetingTitle") ?: "회의"
+
+        val meetingId = arguments?.getInt("meetingId") ?: -1
+
+        if (meetingId != -1) {
+            loadMeetingSummary(meetingId, meetingTitle)
+        }
 
         title.text = meetingTitle
         recycler.layoutManager = LinearLayoutManager(requireContext())
@@ -342,6 +353,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         }
     }
 
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
     private fun copyFileToDownloadsApi29Plus(sourceFile: File): Boolean {
         val resolver = requireContext().contentResolver
         val mimeType = getMimeType(sourceFile)
@@ -367,6 +379,65 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         }.getOrElse {
             resolver.delete(itemUri, null, null)
             false
+        }
+    }
+
+    private fun loadMeetingSummary(
+        meetingId: Int,
+        meetingTitle: String
+    ) {
+
+        viewLifecycleOwner.lifecycleScope.launch {
+
+            try {
+
+                val response =
+                    RetrofitClient.api
+                        .getMeetingSummary(meetingId)
+
+                val summary =
+                    response.summary.toDomain()
+
+                val prefs =
+                    requireContext()
+                        .getSharedPreferences("moa_prefs", 0)
+
+                prefs.edit()
+                    .putString(
+                        "${meetingTitle}_summary",
+                        summary.summary
+                    )
+                    .putString(
+                        "${meetingTitle}_decisions",
+                        summary.decisions.joinToString("\n") {
+                            "• $it"
+                        }
+                    )
+                    .putString(
+                        "${meetingTitle}_actions",
+                        summary.actionItems.joinToString("\n\n") {
+
+                            val owner =
+                                it.owner ?: "미정"
+
+                            val deadline =
+                                it.deadline ?: "미정"
+
+                            "• ${it.task}\n담당: $owner\n마감: $deadline"
+                        }
+                    )
+                    .apply()
+
+            } catch (e: Exception) {
+
+                e.printStackTrace()
+
+                Toast.makeText(
+                    requireContext(),
+                    "요약 불러오기 실패",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 

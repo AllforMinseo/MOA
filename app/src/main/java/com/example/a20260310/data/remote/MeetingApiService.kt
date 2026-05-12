@@ -8,6 +8,7 @@ import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -41,5 +42,10 @@ interface MeetingApiService {
     @POST("meetings/{meetingId}/summary")
     suspend fun generateSummary(
         @Path("meetingId") meetingId: Int,
+    ): SummaryGenerateResponseDto
+
+    @GET("meetings/{meeting_id}/summary")
+    suspend fun getMeetingSummary(
+        @Path("meeting_id") meetingId: Int,
     ): SummaryGenerateResponseDto
 }
