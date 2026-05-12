@@ -43,7 +43,7 @@ __all__ = [
     "TranscriptSimpleResponse",
 
     # summary
-    "ActionItem"
+    "ActionItem",
     "SummaryCreate",
     "SummaryResponse",
     "SummaryGenerateResponse",
