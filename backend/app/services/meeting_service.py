@@ -528,10 +528,13 @@ def update_summary_for_meeting(
 
     # 3. 프론트에서 받은 데이터를 dict로 구성
     updated_summary_dict = {
-        "summary": summary_data.summary,
-        "decisions": summary_data.decisions,
-        "action_items": summary_data.action_items,
-    }
+    "summary": summary_data.summary,
+    "decisions": summary_data.decisions,
+    "action_items": [
+        action_item.model_dump()
+        for action_item in summary_data.action_items
+    ],
+}
 
     # 4. DB 저장용 JSON 문자열로 변환
     summary_content = json.dumps(

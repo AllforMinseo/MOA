@@ -63,6 +63,24 @@ class SummaryGenerateResponse(BaseModel):
     summary: dict[str, Any]
 
 
+class ActionItem(BaseModel):
+    """
+    회의 action item 객체 스키마
+
+    예시
+    ----
+    {
+        "task": "프론트는 access_token을 헤더에 포함",
+        "assignee": "김철수",
+        "due_date": "2026.05.13"
+    }
+    """
+
+    task: str = Field(..., description="해야 할 일")
+    assignee: str | None = Field(default=None, description="담당자")
+    due_date: str | None = Field(default=None, description="마감일")
+
+
 class SummaryUpdateRequest(BaseModel):
     """
     회의 summary 수정 요청 스키마
@@ -70,19 +88,14 @@ class SummaryUpdateRequest(BaseModel):
     사용 위치
     -------
     PATCH /meetings/{meeting_id}/summary
-
-    요청 예시
-    --------
-    {
-        "summary": "수정된 회의 요약",
-        "decisions": ["수정된 결정사항 1", "수정된 결정사항 2"],
-        "action_items": ["수정된 할 일 1", "수정된 할 일 2"]
-    }
     """
 
     summary: str = Field(default="", description="회의 요약")
     decisions: list[str] = Field(default_factory=list, description="결정사항 목록")
-    action_items: list[str] = Field(default_factory=list, description="할 일 목록")
+    action_items: list[ActionItem] = Field(
+        default_factory=list,
+        description="할 일 목록",
+    )
 
 
 class SummaryDetailResponse(BaseModel):

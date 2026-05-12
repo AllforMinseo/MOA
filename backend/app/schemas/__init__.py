@@ -12,6 +12,7 @@ from schemas import MeetingCreate, MeetingResponse
 from .image_schema import ImageCreate, ImageResponse, ImageUploadResponse
 from .meeting_schema import MeetingCreate, MeetingResponse, MeetingUpdate
 from .summary_schema import (
+    ActionItem,
     SummaryCreate,
     SummaryDetailResponse,
     SummaryGenerateResponse,
@@ -42,6 +43,7 @@ __all__ = [
     "TranscriptSimpleResponse",
 
     # summary
+    "ActionItem"
     "SummaryCreate",
     "SummaryResponse",
     "SummaryGenerateResponse",
