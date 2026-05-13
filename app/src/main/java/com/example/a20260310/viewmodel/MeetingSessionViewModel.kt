@@ -13,6 +13,7 @@ import com.example.a20260310.data.model.MeetingDraft
 import com.example.a20260310.data.model.MeetingStatus
 import com.example.a20260310.data.model.MinutesUiMapper
 import com.example.a20260310.data.model.MinutesUiModel
+import com.example.a20260310.data.remote.mapper.toDomain
 import com.example.a20260310.data.repository.MeetingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -513,7 +514,7 @@ class MeetingSessionViewModel(
             }
             val summary =
                 withContext(Dispatchers.IO) {
-                    repository.generateSummary(created.id)
+                    repository.getMeetingSummary(created.id).toDomain()
                 }
             val ui = MinutesUiMapper.build(snapshot, latestTranscriptText, summary)
             patchCurrentMeeting {

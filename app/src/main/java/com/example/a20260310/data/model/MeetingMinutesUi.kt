@@ -1,7 +1,5 @@
 package com.example.a20260310.data.model
 
-import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
-
 data class MeetingDraft(
     val title: String = "",
     val date: String = "",
@@ -19,7 +17,6 @@ data class MeetingDraft(
         return dt.ifBlank { "—" }
     }
 
-    /** 쉼표 구분 참석자 문자열 → 목록 (폼 Chip과 동일 규칙) */
     fun participantList(): List<String> =
         attendees.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
@@ -28,9 +25,7 @@ data class MinutesUiModel(
     val subject: String,
     val datetime: String,
     val attendees: String,
-    /** 구조화 요약 (SummaryFragment에서 직접 접근) */
     val summary: MeetingSummary,
-    /** LLM 요약 본문 (회의 요약 카드용, 호환 유지) */
     val summaryText: String,
     val agenda: String,
     val discussion: String,
@@ -43,39 +38,42 @@ object MinutesUiMapper {
     fun build(
         draft: MeetingDraft,
         transcript: String,
-        response: SummaryGenerateResponseDto,
+        summary: MeetingSummary,
     ): MinutesUiModel {
-        val payload = response.summary
-        val summary = payload.toDomain()
-        val agenda = when {
-            payload.decisions.isNotEmpty() ->
-                payload.decisions.joinToString("\n") { "• $it" }
-            else -> "—"
+        val agenda = if (summary.decisions.isNotEmpty()) {
+            summary.decisions.joinToString("\n") { "• ${it.content.trim()}" }
+        } else {
+            "—"
         }
+
         val discussion = buildString {
-            append(payload.summary.trim().ifBlank { "—" })
+            append(summary.summary.trim().ifBlank { "—" })
             val t = transcript.trim()
             if (t.isNotEmpty()) {
                 append("\n\n──── 전사 ────\n")
                 append(t)
             }
         }
-        val note = payload.error?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
-        val followup = if (payload.actionItems.isNotEmpty()) {
-            payload.actionItems.joinToString("\n") { item ->
-                val owner = item.assignee?.trim()?.ifBlank { "미정" }
-                val deadline = item.dueDate?.trim()?.ifBlank { "미정" }
-                "• ${item.task.trim()} (담당: $owner / 마감: $deadline)"
+
+        val note = "—"
+
+        val followup = if (summary.actionItems.isNotEmpty()) {
+            summary.actionItems.joinToString("\n") { item ->
+                val owner = item.owner.trim().ifBlank { "미정" }
+                val deadline = item.deadline.trim().ifBlank { "미정" }
+                val title = item.title.trim().ifBlank { "—" }
+                "• $title (담당: $owner / 마감: $deadline)"
             }
         } else {
             "—"
         }
+
         return MinutesUiModel(
             subject = draft.title.trim().ifBlank { "—" },
             datetime = draft.displayDatetime(),
             attendees = draft.attendees.trim().ifBlank { "—" },
             summary = summary,
-            summaryText = payload.summary.trim().ifBlank { "—" },
+            summaryText = summary.summary.trim().ifBlank { "—" },
             agenda = agenda,
             discussion = discussion,
             note = note,

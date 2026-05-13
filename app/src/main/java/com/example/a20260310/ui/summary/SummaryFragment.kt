@@ -9,6 +9,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.a20260310.R
 import com.example.a20260310.data.model.ActionItem
+import com.example.a20260310.data.model.DecisionItem
 import com.example.a20260310.viewmodel.MeetingSessionViewModel
 import com.google.android.material.button.MaterialButton
 
@@ -27,8 +28,9 @@ class SummaryFragment : Fragment(R.layout.fragment_summary) {
         sessionViewModel.minutes.observe(viewLifecycleOwner) { minutes ->
             minutes ?: return@observe
             val summary = minutes.summary
+
             summaryText.text = summary.summary.trim().ifBlank { "—" }
-            bindStrings(decisionsLayout, summary.decisions)
+            bindDecisions(decisionsLayout, summary.decisions)
             bindActionItems(actionItemsLayout, summary.actionItems)
         }
 
@@ -37,15 +39,16 @@ class SummaryFragment : Fragment(R.layout.fragment_summary) {
         }
     }
 
-    private fun bindStrings(container: LinearLayout, lines: List<String>) {
+    private fun bindDecisions(container: LinearLayout, items: List<DecisionItem>) {
         container.removeAllViews()
-        val cleaned = lines.map { it.trim() }.filter { it.isNotBlank() }
-        if (cleaned.isEmpty()) {
+        if (items.isEmpty()) {
             container.addView(makeLineView("—"))
             return
         }
-        cleaned.forEach { line ->
-            container.addView(makeLineView("• $line"))
+
+        items.forEach { item ->
+            val content = item.content.trim().ifBlank { "—" }
+            container.addView(makeLineView("• $content"))
         }
     }
 
@@ -55,15 +58,16 @@ class SummaryFragment : Fragment(R.layout.fragment_summary) {
             container.addView(makeLineView("—"))
             return
         }
+
         items.forEach { item ->
             container.addView(makeLineView(formatActionItem(item)))
         }
     }
 
     private fun formatActionItem(item: ActionItem): String {
-        val task = item.task.trim().ifBlank { "—" }
-        val owner = item.owner?.trim()?.ifBlank { null } ?: "미정"
-        val deadline = item.deadline?.trim()?.ifBlank { null } ?: "미정"
+        val task = item.title.trim().ifBlank { "—" }
+        val owner = item.owner.trim().ifBlank { "미정" }
+        val deadline = item.deadline.trim().ifBlank { "미정" }
         return "• $task (담당: $owner / 마감: $deadline)"
     }
 
