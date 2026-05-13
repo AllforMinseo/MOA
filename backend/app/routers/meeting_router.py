@@ -38,13 +38,16 @@ from schemas.summary_schema import (
 )
 from services.meeting_service import (
     create_new_meeting,
-    create_summary_for_meeting,
     get_full_transcript_for_meeting,
     get_meeting_detail,
     get_meeting_list,
-    get_summary_for_meeting,
     remove_meeting,
     update_meeting_detail,
+)
+
+from services.summary_service import (
+    create_summary_for_meeting,
+    get_summary_for_meeting,
     update_summary_for_meeting,
 )
 from utils.auth_dependency import get_current_user
@@ -286,7 +289,7 @@ def read_summary(
 @router.patch(
     "/{meeting_id}/summary",
     response_model=SummaryDetailResponse,
-    summary="회의 summary 수정",
+    summary="회의 summary 본문 수정",
 )
 def patch_summary(
     meeting_id: int,
@@ -295,19 +298,18 @@ def patch_summary(
     current_user: User = Depends(get_current_user),
 ) -> SummaryDetailResponse:
     """
-    현재 로그인한 사용자의 특정 회의 summary를 수정합니다.
-
-    사용 위치
-    -------
-    회의 상세 페이지에서 사용자가 요약/결정사항/할 일을 직접 수정할 때 사용합니다.
+    현재 로그인한 사용자의 특정 회의 summary 본문을 수정합니다.
 
     요청 예시
     --------
     {
-        "summary": "수정된 회의 요약",
-        "decisions": ["결정사항 1", "결정사항 2"],
-        "action_items": ["할 일 1", "할 일 2"]
+        "summary": "수정된 회의 요약 본문"
     }
+
+    주의
+    ----
+    - 결정사항 추가/수정/삭제는 decision API를 사용합니다.
+    - 할 일 추가/수정/삭제는 action item API를 사용합니다.
 
     인증
     ----
