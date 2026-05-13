@@ -3,13 +3,15 @@ package com.example.a20260310.data.remote
 import com.example.a20260310.data.remote.dto.MeetingCreateRequest
 import com.example.a20260310.data.remote.dto.ImageUploadResponseDto
 import com.example.a20260310.data.remote.dto.MeetingResponseDto
-import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
+import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -65,4 +67,9 @@ interface MeetingApiService {
         @Path("meetingId") meetingId: Int,
         @Body body: SummaryUpdateRequest,
     ): SummaryDetailResponseDto
+
+    @DELETE("meetings/{meetingId}")
+    suspend fun deleteMeeting(
+        @Path("meetingId") meetingId: Int,
+    ): Response<Unit>
 }

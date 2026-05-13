@@ -16,6 +16,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.File
 
 class MeetingRepository(
@@ -127,5 +128,9 @@ class MeetingRepository(
         request: SummaryUpdateRequest,
     ): SummaryDetailResponseDto {
         return api.updateSummary(meetingId, request)
+    }
+
+    suspend fun deleteMeeting(meetingId: Int): Response<Unit> {
+        return api.deleteMeeting(meetingId)
     }
 }

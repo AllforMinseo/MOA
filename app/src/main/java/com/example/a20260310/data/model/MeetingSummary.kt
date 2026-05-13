@@ -1,5 +1,6 @@
 package com.example.a20260310.data.model
 
+import com.example.a20260310.data.remote.dto.ActionItemPayload
 import com.example.a20260310.data.remote.dto.LlmSummaryPayload
 
 /**
@@ -21,7 +22,7 @@ data class ActionItem(
 
 /**
  * DTO -> 도메인 변환.
- * DTO의 owner/deadline은 빈 문자열로 내려올 수 있어 도메인에서는 null로 정규화한다.
+ * DTO의 owner/deadline은 빈 문자열로 내려줄 수 있어 도메인에서는 null로 정규화한다.
  */
 fun LlmSummaryPayload.toDomain(): MeetingSummary =
     MeetingSummary(
@@ -32,6 +33,20 @@ fun LlmSummaryPayload.toDomain(): MeetingSummary =
                 task = it.task,
                 owner = it.owner.trim().ifBlank { null },
                 deadline = it.deadline.trim().ifBlank { null },
+            )
+        },
+        error = error,
+    )
+
+fun MeetingSummary.toDto(): LlmSummaryPayload =
+    LlmSummaryPayload(
+        summary = summary,
+        decisions = decisions,
+        actionItems = actionItems.map {
+            ActionItemPayload(
+                task = it.task,
+                owner = it.owner.orEmpty(),
+                deadline = it.deadline.orEmpty(),
             )
         },
         error = error,
