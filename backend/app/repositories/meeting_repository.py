@@ -107,22 +107,6 @@ def get_meetings_by_user_id(
     )
 
 
-def get_all_meetings(db: Session, skip: int = 0, limit: int = 100) -> list[Meeting]:
-    """
-    전체 회의 목록 조회
-
-    관리자 기능이나 테스트 용도로만 사용하는 것을 권장한다.
-    """
-
-    return (
-        db.query(Meeting)
-        .order_by(Meeting.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-
 def update_meeting(
     db: Session,
     meeting: Meeting,

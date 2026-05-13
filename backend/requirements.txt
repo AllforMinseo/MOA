@@ -43,5 +43,5 @@ openai
 # 따라서 bcrypt를 4.3.0으로 고정
 # =========================
 passlib[bcrypt]==1.7.4
-bcrypt==4.3.0
+bcrypt==4.0.1
 python-jose[cryptography]
