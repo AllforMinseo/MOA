@@ -35,9 +35,9 @@ import org.json.JSONObject
 import java.io.File
 import java.util.LinkedHashSet
 import java.util.Locale
+import com.example.a20260310.data.local.MeetingLocalFilesPrefs
 import com.example.a20260310.data.model.MeetingFileRow
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 
 class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
 
@@ -442,67 +442,46 @@ class AddMethodFragment : Fragment(R.layout.fragment_add_method) {
         localPath: String,
         fileType: String,
     ) {
-        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-        val key = "${meetingTitle}_files_json"
-
-        val existing = prefs.getString(key, null)
-        val currentList = if (existing.isNullOrBlank()) {
-            emptyList()
-        } else {
-            try {
-                val type = object : TypeToken<List<MeetingFileRow>>() {}.type
-                gson.fromJson<List<MeetingFileRow>>(existing, type) ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }
-
         val file = File(localPath)
-        val newItem = MeetingFileRow(
-            title = displayName.ifBlank { file.name.ifBlank { "첨부파일" } },
-            subtitle = if (file.exists()) "${file.length() / 1024} KB" else "",
-            localPath = localPath,
-            displayName = displayName.ifBlank { file.name.ifBlank { "첨부파일" } },
-            type = when (fileType.uppercase(Locale.ROOT)) {
-                "AUDIO" -> MeetingFileRow.Type.AUDIO
-                "IMAGE" -> MeetingFileRow.Type.IMAGE
-                "PDF" -> MeetingFileRow.Type.PDF
-                else -> {
-                    if (file.extension.equals("pdf", ignoreCase = true)) {
-                        MeetingFileRow.Type.PDF
-                    } else {
-                        MeetingFileRow.Type.DOCUMENT
-                    }
-                }
-            }
+        val newItem =
+            MeetingFileRow(
+                title = displayName.ifBlank { file.name.ifBlank { "첨부파일" } },
+                subtitle = if (file.exists()) "${file.length() / 1024} KB" else "",
+                localPath = localPath,
+                displayName = displayName.ifBlank { file.name.ifBlank { "첨부파일" } },
+                type =
+                    when (fileType.uppercase(Locale.ROOT)) {
+                        "AUDIO" -> MeetingFileRow.Type.AUDIO
+                        "IMAGE" -> MeetingFileRow.Type.IMAGE
+                        "PDF" -> MeetingFileRow.Type.PDF
+                        else -> {
+                            if (file.extension.equals("pdf", ignoreCase = true)) {
+                                MeetingFileRow.Type.PDF
+                            } else {
+                                MeetingFileRow.Type.DOCUMENT
+                            }
+                        }
+                    },
+            )
+        val backendId = sessionViewModel.currentBackendMeetingId.value
+        MeetingLocalFilesPrefs.appendOrUpdate(
+            requireContext(),
+            gson,
+            meetingTitle,
+            backendId,
+            newItem,
         )
-
-        val updated = currentList
-            .filterNot { it.localPath == localPath }
-            .plus(newItem)
-
-        prefs.edit()
-            .putString(key, gson.toJson(updated))
-            .apply()
     }
 
     private fun removeFileFromMeeting(localPath: String) {
         val meetingTitle = getMeetingTitle()
-        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-        val key = "${meetingTitle}_files_json"
-        val existing = prefs.getString(key, null) ?: return
-
-        val currentList = try {
-            val type = object : TypeToken<List<MeetingFileRow>>() {}.type
-            gson.fromJson<List<MeetingFileRow>>(existing, type) ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-
-        val updated = currentList.filterNot { it.localPath == localPath }
-
-        prefs.edit()
-            .putString(key, gson.toJson(updated))
-            .apply()
+        val backendId = sessionViewModel.currentBackendMeetingId.value
+        MeetingLocalFilesPrefs.removeByLocalPath(
+            requireContext(),
+            gson,
+            meetingTitle,
+            backendId,
+            localPath,
+        )
     }
 }

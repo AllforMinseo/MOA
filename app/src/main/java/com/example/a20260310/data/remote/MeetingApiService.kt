@@ -12,7 +12,6 @@ import com.example.a20260310.data.remote.dto.MeetingResponseDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
-import com.example.a20260310.data.remote.dto.MeetingFullTranscriptResponseDto
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import com.google.gson.JsonObject
 import okhttp3.MultipartBody
@@ -72,11 +71,6 @@ interface MeetingApiService {
     suspend fun getSummary(
         @Path("meetingId") meetingId: Int,
     ): SummaryDetailResponseDto
-
-    @GET("meetings/{meetingId}/transcript")
-    suspend fun getMeetingFullTranscript(
-        @Path("meetingId") meetingId: Int,
-    ): MeetingFullTranscriptResponseDto
 
     @PATCH("meetings/{meetingId}/summary")
     suspend fun updateSummary(

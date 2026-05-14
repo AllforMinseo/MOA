@@ -142,5 +142,9 @@ class MeetingResponse(BaseModel):
     meeting_time: Optional[str] = None
     attendees: list[str] = Field(default_factory=list)
     description: Optional[str] = None
+    server_file_paths: list[str] = Field(
+        default_factory=list,
+        description="회의에 연결된 업로드 파일의 서버 저장 경로 목록",
+    )
     created_at: datetime
     updated_at: datetime

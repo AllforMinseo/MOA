@@ -28,7 +28,6 @@ sealed interface MeetingDetailEffect {
     data class Error(val message: String) : MeetingDetailEffect
     data object NavigateToLogin : MeetingDetailEffect
     data object MeetingDeleted : MeetingDetailEffect
-    data class TranscriptReady(val text: String) : MeetingDetailEffect
 }
 
 class DetailViewModel(
@@ -336,31 +335,6 @@ class DetailViewModel(
             }.onFailure { e ->
                 _uiState.value = _uiState.value.copy(isLoading = false)
                 emitFailure(e)
-            }
-        }
-    }
-
-    fun loadTranscript() {
-        if (!guardMeetingId()) return
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            runCatching {
-                withContext(Dispatchers.IO) { repository.getMeetingFullTranscript(meetingId) }
-            }.onSuccess { dto ->
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                val text = dto.transcript.trim().ifBlank { "(전사 내용이 비어 있습니다.)" }
-                _effects.send(MeetingDetailEffect.TranscriptReady(text))
-            }.onFailure { e ->
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                if (e is HttpException && e.code() == 404) {
-                    _effects.send(
-                        MeetingDetailEffect.Error(
-                            "전사를 불러올 수 없습니다. 회의·STT 데이터가 없거나 아직 준비되지 않았습니다.",
-                        ),
-                    )
-                } else {
-                    emitFailure(e)
-                }
             }
         }
     }

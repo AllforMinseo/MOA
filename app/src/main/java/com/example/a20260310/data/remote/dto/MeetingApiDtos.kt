@@ -17,6 +17,8 @@ data class MeetingResponseDto(
     @SerializedName("meeting_time") val meetingTime: String? = null,
     @SerializedName("attendees") val attendees: List<String>? = emptyList(),
     @SerializedName("description") val description: String? = null,
+    @SerializedName(value = "server_file_paths", alternate = ["serverFilePaths"])
+    val serverFilePaths: List<String>? = null,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null,
 )
@@ -27,12 +29,6 @@ data class TranscriptResponseDto(
     @SerializedName("content") val content: String,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null,
-)
-
-/** GET /meetings/{id}/transcript — 회의 전체 전사 문자열. */
-data class MeetingFullTranscriptResponseDto(
-    @SerializedName("meeting_id") val meetingId: Int,
-    @SerializedName("transcript") val transcript: String,
 )
 
 data class ImageUploadResponseDto(

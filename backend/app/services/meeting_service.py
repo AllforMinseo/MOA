@@ -105,7 +105,11 @@ def attendees_text_to_list(attendees_text: str | None) -> list[str]:
     ]
 
 
-def meeting_to_response(meeting) -> MeetingResponse:
+def meeting_to_response(
+    meeting,
+    *,
+    server_file_paths: list[str] | None = None,
+) -> MeetingResponse:
     """
     Meeting ORM 객체를 MeetingResponse로 변환
 
@@ -115,6 +119,8 @@ def meeting_to_response(meeting) -> MeetingResponse:
     API 응답에서는 list[str]로 반환해야 하기 때문이다.
     """
 
+    paths = list(server_file_paths) if server_file_paths is not None else []
+
     return MeetingResponse(
         id=meeting.id,
         title=meeting.title,
@@ -122,9 +128,16 @@ def meeting_to_response(meeting) -> MeetingResponse:
         meeting_time=getattr(meeting, "meeting_time", None),
         attendees=attendees_text_to_list(getattr(meeting, "attendees", None)),
         description=getattr(meeting, "description", None),
+        server_file_paths=paths,
         created_at=meeting.created_at,
         updated_at=meeting.updated_at,
     )
+
+
+def _image_paths_for_meeting(db: Session, meeting_id: int) -> list[str]:
+    """회의에 연결된 image 행의 file_path 목록 (첨부·다운로드 UI용)."""
+    images = get_images_by_meeting_id(db, meeting_id, skip=0, limit=500)
+    return [img.file_path for img in images if getattr(img, "file_path", None)]
 
 
 # -----------------------------------------
@@ -151,7 +164,7 @@ def create_new_meeting(
         attendees_text=attendees_text,
     )
 
-    return meeting_to_response(meeting)
+    return meeting_to_response(meeting, server_file_paths=[])
 
 
 def get_meeting_detail(
@@ -172,7 +185,8 @@ def get_meeting_detail(
     if meeting is None:
         return None
 
-    return meeting_to_response(meeting)
+    paths = _image_paths_for_meeting(db, meeting_id)
+    return meeting_to_response(meeting, server_file_paths=paths)
 
 
 def get_meeting_list(
@@ -229,7 +243,8 @@ def update_meeting_detail(
         attendees_text=attendees_text,
     )
 
-    return meeting_to_response(updated_meeting)
+    paths = _image_paths_for_meeting(db, meeting_id)
+    return meeting_to_response(updated_meeting, server_file_paths=paths)
 
 
 def remove_meeting(

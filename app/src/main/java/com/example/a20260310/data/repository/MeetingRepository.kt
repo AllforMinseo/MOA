@@ -15,7 +15,6 @@ import com.example.a20260310.data.remote.dto.DecisionUpdateRequestDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
-import com.example.a20260310.data.remote.dto.MeetingFullTranscriptResponseDto
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -82,10 +81,6 @@ class MeetingRepository(
         attendees.map { it.trim() }.filter { it.isNotEmpty() }.forEach { arr.add(it) }
         body.add("attendees", arr)
         return api.updateMeeting(meetingId, body)
-    }
-
-    suspend fun getMeetingFullTranscript(meetingId: Int): MeetingFullTranscriptResponseDto {
-        return api.getMeetingFullTranscript(meetingId)
     }
 
     suspend fun uploadAudioFiles(meetingId: Int, files: List<File>): TranscriptResponseDto {

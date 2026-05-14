@@ -38,9 +38,9 @@ import java.util.Locale
 import java.util.*
 import org.json.JSONArray
 import org.json.JSONObject
+import com.example.a20260310.data.local.MeetingLocalFilesPrefs
 import com.example.a20260310.data.model.MeetingFileRow
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 
 fun getCurrentFileName(): String {
     val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
@@ -675,21 +675,6 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
         localPath: String,
         segmentLocalPaths: List<String>,
     ) {
-        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-        val key = "${meetingTitle}_files_json"
-
-        val existing = prefs.getString(key, null)
-        val currentList = if (existing.isNullOrBlank()) {
-            emptyList()
-        } else {
-            try {
-                val type = object : TypeToken<List<MeetingFileRow>>() {}.type
-                gson.fromJson<List<MeetingFileRow>>(existing, type) ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }
-
         val firstExistingFile = sequenceOf(localPath)
             .plus(segmentLocalPaths.asSequence())
             .map { File(it) }
@@ -697,24 +682,27 @@ class RecordingFragment : Fragment(R.layout.fragment_recording) {
 
         val subtitle = firstExistingFile?.let { "${it.length() / 1024} KB" }.orEmpty()
 
-        val newItem = MeetingFileRow(
-            title = displayName.ifBlank {
-                firstExistingFile?.nameWithoutExtension ?: "녹음파일"
-            },
-            subtitle = subtitle,
-            localPath = localPath,
-            displayName = displayName.ifBlank {
-                firstExistingFile?.nameWithoutExtension ?: "녹음파일"
-            },
-            type = MeetingFileRow.Type.AUDIO,
+        val newItem =
+            MeetingFileRow(
+                title =
+                    displayName.ifBlank {
+                        firstExistingFile?.nameWithoutExtension ?: "녹음파일"
+                    },
+                subtitle = subtitle,
+                localPath = localPath,
+                displayName =
+                    displayName.ifBlank {
+                        firstExistingFile?.nameWithoutExtension ?: "녹음파일"
+                    },
+                type = MeetingFileRow.Type.AUDIO,
+            )
+        val backendId = sessionViewModel.currentBackendMeetingId.value
+        MeetingLocalFilesPrefs.appendOrUpdate(
+            requireContext(),
+            gson,
+            meetingTitle,
+            backendId,
+            newItem,
         )
-
-        val updated = currentList
-            .filterNot { it.localPath == localPath }
-            .plus(newItem)
-
-        prefs.edit()
-            .putString(key, gson.toJson(updated))
-            .apply()
     }
 }

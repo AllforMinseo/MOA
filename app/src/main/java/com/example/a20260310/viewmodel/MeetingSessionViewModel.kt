@@ -129,6 +129,25 @@ class MeetingSessionViewModel(
     private val _currentBackendMeetingId = MutableLiveData<Int?>(null)
     val currentBackendMeetingId: LiveData<Int?> = _currentBackendMeetingId
 
+    /** 회의 ID → 업로드 API에서 받은 `file_path` 목록 (같은 앱 세션 내 상세·파일 탭용). */
+    private val serverFilePathsByMeetingId = mutableMapOf<Int, List<String>>()
+
+    fun rememberServerFilePaths(meetingId: Int, paths: List<String>) {
+        if (meetingId <= 0) return
+        serverFilePathsByMeetingId[meetingId] = paths.map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    fun getServerFilePaths(meetingId: Int): List<String> {
+        if (meetingId <= 0) return emptyList()
+        serverFilePathsByMeetingId[meetingId]?.let { return it }
+        val backendId = _currentBackendMeetingId.value
+        val meeting = _currentMeeting.value
+        if (meeting != null && backendId == meetingId) {
+            return meeting.serverFilePaths.map { it.trim() }.filter { it.isNotEmpty() }
+        }
+        return emptyList()
+    }
+
     fun setCurrentMeetingTitle(title: String) {
         _currentMeetingTitle.value = title.trim().ifBlank { "회의" }
     }
@@ -552,6 +571,7 @@ class MeetingSessionViewModel(
                             }
                         }
                     }
+                    rememberServerFilePaths(created.id, uploadedServerPaths.toList())
                 } finally {
                     tempGeneratedAudioFiles.forEach { it.delete() }
                 }

@@ -1,26 +1,29 @@
 package com.example.a20260310.ui.detail
 
 import android.app.AlertDialog
-import android.content.ContentValues
-import android.os.Build
+import android.app.DownloadManager
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.ProgressBar
-import android.widget.ScrollView
 import android.widget.TextView
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -28,8 +31,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.a20260310.BuildConfig
 import com.example.a20260310.R
 import com.example.a20260310.data.auth.TokenManager
+import com.example.a20260310.data.local.MeetingLocalFilesPrefs
 import com.example.a20260310.data.model.DecisionItem
 import com.example.a20260310.data.model.DetailTaskItem
 import com.example.a20260310.data.model.MeetingFileRow
@@ -37,21 +42,24 @@ import com.example.a20260310.data.remote.dto.ActionItemDto
 import com.example.a20260310.data.remote.dto.DecisionDto
 import com.example.a20260310.data.remote.dto.MeetingResponseDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
+import com.example.a20260310.ui.common.WrappingLinearLayoutManager
 import com.example.a20260310.viewmodel.DetailViewModel
 import com.example.a20260310.viewmodel.DetailViewModelFactory
 import com.example.a20260310.viewmodel.MeetingDetailEffect
 import com.example.a20260310.viewmodel.MeetingDetailUiState
+import com.example.a20260310.viewmodel.MeetingSessionViewModel
+import com.google.gson.Gson
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import java.io.File
-import java.io.FileInputStream
 import java.util.Locale
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
+
+    private val gson = Gson()
 
     private var isSummaryTab = true
 
@@ -63,11 +71,16 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     private lateinit var summaryBtn: MaterialButton
     private lateinit var fileBtn: MaterialButton
     private lateinit var fileRecycler: RecyclerView
-    private lateinit var summaryScroll: ScrollView
+    private lateinit var summaryScroll: View
     private lateinit var summaryText: TextView
+    private lateinit var fileTabContainer: View
+    private lateinit var fileEmptyState: TextView
+    private lateinit var emptyDecisionsHint: TextView
 
     private lateinit var decisionAdapter: DecisionAdapter
     private lateinit var actionAdapter: ActionAdapter
+
+    private val sessionViewModel: MeetingSessionViewModel by activityViewModels()
 
     private val meetingId: Int
         get() = arguments?.takeIf { it.containsKey("meetingId") }?.getInt("meetingId", 0) ?: 0
@@ -92,14 +105,21 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         fileRecycler = view.findViewById(R.id.fileRecycler)
         summaryScroll = view.findViewById(R.id.summaryScroll)
         summaryText = view.findViewById(R.id.summaryText)
+        fileTabContainer = view.findViewById(R.id.fileTabContainer)
+        fileEmptyState = view.findViewById(R.id.fileEmptyState)
+        emptyDecisionsHint = view.findViewById(R.id.emptyDecisionsHint)
 
         val decisionRecycler = view.findViewById<RecyclerView>(R.id.decisionRecycler)
         val actionRecycler = view.findViewById<RecyclerView>(R.id.actionRecycler)
 
         titleView.text = meetingTitle
         fileRecycler.layoutManager = LinearLayoutManager(requireContext())
-        decisionRecycler.layoutManager = LinearLayoutManager(requireContext())
-        actionRecycler.layoutManager = LinearLayoutManager(requireContext())
+        val wrapLmDecisions = WrappingLinearLayoutManager(requireContext())
+        val wrapLmActions = WrappingLinearLayoutManager(requireContext())
+        decisionRecycler.layoutManager = wrapLmDecisions
+        decisionRecycler.isNestedScrollingEnabled = false
+        actionRecycler.layoutManager = wrapLmActions
+        actionRecycler.isNestedScrollingEnabled = false
 
         decisionAdapter =
             DecisionAdapter(
@@ -126,16 +146,13 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         view.findViewById<View>(R.id.btnEditMeetingInfo).setOnClickListener {
             showEditMeetingInfoDialog()
         }
-        view.findViewById<View>(R.id.btnViewTranscript).setOnClickListener {
-            viewModel.loadTranscript()
-        }
         view.findViewById<View>(R.id.btnAddDecision).setOnClickListener { showAddDecisionDialog() }
         view.findViewById<View>(R.id.btnAddAction).setOnClickListener { showAddActionDialog() }
 
         setupListeners(view)
         setupToolbarMenu()
         updateTabs(summaryBtn, fileBtn)
-        showSummary(summaryScroll, fileRecycler)
+        showSummary(summaryScroll, fileTabContainer)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -188,6 +205,12 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             meetingDateView.text = meeting.meetingDate?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
             meetingTimeView.text = meeting.meetingTime?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
             bindAttendees(meeting)
+            meeting.serverFilePaths?.let { paths ->
+                sessionViewModel.rememberServerFilePaths(meeting.id, paths)
+            }
+            if (!isSummaryTab) {
+                bindMeetingFileList()
+            }
         } else if (meetingId <= 0) {
             titleView.text = meetingTitle
             meetingDateView.text = "—"
@@ -233,28 +256,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                 Toast.makeText(requireContext(), "회의가 삭제되었습니다.", Toast.LENGTH_SHORT).show()
                 findNavController().popBackStack()
             }
-
-            is MeetingDetailEffect.TranscriptReady -> showTranscriptDialog(effect.text)
         }
-    }
-
-    private fun showTranscriptDialog(text: String) {
-        val scroll =
-            ScrollView(requireContext()).apply {
-                val tv =
-                    TextView(requireContext()).apply {
-                        setTextIsSelectable(true)
-                        textSize = 14f
-                        setPadding(48, 24, 48, 24)
-                        this.text = text
-                    }
-                addView(tv)
-            }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("회의 전사")
-            .setView(scroll)
-            .setPositiveButton("닫기", null)
-            .show()
     }
 
     private fun showEditMeetingInfoDialog() {
@@ -309,13 +311,13 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         summaryBtn.setOnClickListener {
             isSummaryTab = true
             updateTabs(summaryBtn, fileBtn)
-            showSummary(summaryScroll, fileRecycler)
+            showSummary(summaryScroll, fileTabContainer)
         }
 
         fileBtn.setOnClickListener {
             isSummaryTab = false
             updateTabs(summaryBtn, fileBtn)
-            showFiles(summaryScroll, fileRecycler)
+            showFiles(summaryScroll, fileTabContainer)
         }
 
         view.findViewById<View>(R.id.btnEditSummary).setOnClickListener {
@@ -338,8 +340,14 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private fun bindSummaryDetail(detail: SummaryDetailResponseDto) {
         summaryText.text = detail.summary.trim().ifBlank { "—" }
-        decisionAdapter.replaceAll(detail.decisions.map { it.toDecisionItem() })
-        actionAdapter.replaceAll(detail.actionItems.map { it.toDetailTaskItem() })
+        val decisionItems =
+            detail.decisions?.map { it.toDecisionItem() }.orEmpty()
+        decisionAdapter.replaceAll(decisionItems)
+        emptyDecisionsHint.visibility =
+            if (decisionItems.isEmpty()) View.VISIBLE else View.GONE
+        actionAdapter.replaceAll(
+            detail.actionItems?.map { it.toDetailTaskItem() }.orEmpty(),
+        )
     }
 
     private fun showEditSummaryDialog() {
@@ -518,166 +526,215 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         btn.setTextColor(fg)
     }
 
-    private fun showSummary(summaryScroll: View, recycler: RecyclerView) {
+    private fun showSummary(summaryScroll: View, fileTabArea: View) {
         summaryScroll.visibility = View.VISIBLE
-        recycler.visibility = View.GONE
+        fileTabArea.visibility = View.GONE
     }
 
-    private fun showFiles(summaryScroll: View, recycler: RecyclerView) {
+    private fun showFiles(summaryScroll: View, fileTabArea: View) {
         summaryScroll.visibility = View.GONE
-        recycler.visibility = View.VISIBLE
-        val files = loadFiles()
-        recycler.adapter =
-            MeetingFileAdapter(files) { row ->
-                downloadFile(row)
-            }
-    }
-
-    private fun loadFiles(): List<MeetingFileRow> {
-        val prefs = requireContext().getSharedPreferences("moa_prefs", 0)
-        val key = "meeting_files_$meetingTitle"
-        val json = prefs.getString(key, "[]") ?: "[]"
-        val array = JSONArray(json)
-        val items = mutableListOf<MeetingFileRow>()
-        for (i in 0 until array.length()) {
-            val obj = array.getJSONObject(i)
-            val displayName = obj.optString("displayName")
-            val localPath = obj.optString("localPath")
-            val storedSize = obj.optLong("size", 0L)
-            val file = File(localPath)
-            if (file.exists()) {
-                val actualSize = if (storedSize > 0L) storedSize else file.length()
-                val ext = file.extension.lowercase(Locale.ROOT)
-                val type =
-                    when (ext) {
-                        "m4a", "mp3", "wav", "aac", "mp4" -> MeetingFileRow.Type.AUDIO
-                        "jpg", "jpeg", "png", "webp" -> MeetingFileRow.Type.IMAGE
-                        "pdf" -> MeetingFileRow.Type.PDF
-                        else -> MeetingFileRow.Type.DOCUMENT
-                    }
-                val extLabel = if (ext.isBlank()) "FILE" else ext.uppercase(Locale.ROOT)
-                items.add(
-                    MeetingFileRow(
-                        title = displayName.ifBlank { file.name },
-                        subtitle = "$extLabel · ${formatFileSize(actualSize)}",
-                        localPath = localPath,
-                        displayName = displayName.ifBlank { file.name },
-                        type = type,
-                    ),
-                )
-            }
+        fileTabArea.visibility = View.VISIBLE
+        if (meetingId > 0) {
+            viewModel.refreshMeetingHeader()
         }
-        return items.sortedBy { it.title.lowercase(Locale.getDefault()) }
+        bindMeetingFileList()
     }
 
-    private fun downloadFile(item: MeetingFileRow) {
-        val file = File(item.localPath)
-        if (!file.exists()) {
-            Toast.makeText(requireContext(), "파일이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
+    /** API로 받은 경로 + 생성 플로우 세션 캐시(동일 회의) 병합 */
+    private fun resolvedServerFilePaths(): List<String> {
+        val fromApi =
+            viewModel.uiState.value.meeting
+                ?.serverFilePaths
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
+        val fromSession =
+            sessionViewModel.getServerFilePaths(meetingId).map { it.trim() }.filter { it.isNotEmpty() }
+        val ordered = LinkedHashSet<String>()
+        fromApi.forEach { ordered.add(it) }
+        fromSession.forEach { ordered.add(it) }
+        return ordered.toList()
+    }
+
+    /**
+     * 서버 경로(API·세션) + 이 회의 전용 로컬 목록(`meeting_{id}_files_json` 또는 제목 키).
+     */
+    private fun bindMeetingFileList() {
+        val rows = mergedMeetingFileRows()
+        if (rows.isEmpty()) {
+            fileRecycler.adapter = null
+            fileRecycler.visibility = View.GONE
+            fileEmptyState.visibility = View.VISIBLE
             return
         }
-        val success = copyFileToDownloads(file)
-        if (success) {
-            Toast.makeText(requireContext(), "다운로드 완료", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(requireContext(), "다운로드 실패", Toast.LENGTH_SHORT).show()
-        }
+        fileEmptyState.visibility = View.GONE
+        fileRecycler.visibility = View.VISIBLE
+        fileRecycler.adapter =
+            MeetingFileAdapter(rows) { row -> onMeetingFileRowClicked(row) }
     }
 
-    private fun copyFileToDownloads(sourceFile: File): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            copyFileToDownloadsApi29Plus(sourceFile)
-        } else {
-            copyFileToDownloadsLegacy(sourceFile)
+    private fun mergedMeetingFileRows(): List<MeetingFileRow> {
+        val seen = LinkedHashSet<String>()
+        val out = mutableListOf<MeetingFileRow>()
+        fun add(row: MeetingFileRow) {
+            val key =
+                when {
+                    !row.downloadUrl.isNullOrBlank() -> "d:${row.downloadUrl}"
+                    row.localPath.isNotBlank() -> "l:${File(row.localPath).absolutePath}"
+                    else -> "x:${row.title}:${row.subtitle}"
+                }
+            if (seen.add(key)) out.add(row)
         }
+        resolvedServerFilePaths().map { pathToMeetingFileRow(it) }.forEach(::add)
+        loadMeetingFilesFromLocalPrefs().forEach(::add)
+        return out
     }
 
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
-    private fun copyFileToDownloadsApi29Plus(sourceFile: File): Boolean {
-        val resolver = requireContext().contentResolver
-        val mimeType = getMimeType(sourceFile)
-        val values =
-            ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, sourceFile.name)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(
-                    MediaStore.MediaColumns.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS + "/MOA",
-                )
-            }
-        val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
-        return runCatching {
-            FileInputStream(sourceFile).use { input ->
-                resolver.openOutputStream(itemUri)?.use { output ->
-                    input.copyTo(output)
-                } ?: throw IllegalStateException("출력 스트림을 열 수 없습니다.")
-            }
-            true
-        }.getOrElse {
-            resolver.delete(itemUri, null, null)
-            false
+    /**
+     * [meetingId]가 있으면 `meeting_{id}_files_json`만 사용(다른 회의와 분리).
+     * 예전 데이터는 제목 키에서 한 번만 ID 키로 복사한다.
+     * [meetingId]가 없으면 초안용 제목 키만 사용한다.
+     */
+    private fun loadMeetingFilesFromLocalPrefs(): List<MeetingFileRow> {
+        val prefs = MeetingLocalFilesPrefs.prefs(requireContext())
+        if (meetingId > 0) {
+            MeetingLocalFilesPrefs.copyTitleKeyToMeetingIdIfEmpty(
+                requireContext(),
+                gson,
+                meetingTitle,
+                meetingId,
+            )
+            val idKey = MeetingLocalFilesPrefs.meetingIdKey(meetingId) ?: return emptyList()
+            return MeetingLocalFilesPrefs.readList(prefs, gson, idKey)
         }
+        return MeetingLocalFilesPrefs.readList(
+            prefs,
+            gson,
+            MeetingLocalFilesPrefs.titleKey(meetingTitle),
+        )
     }
 
-    @Suppress("DEPRECATION")
-    private fun copyFileToDownloadsLegacy(sourceFile: File): Boolean {
-        val downloadsDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val moaDir = File(downloadsDir, "MOA")
-        if (!moaDir.exists()) {
-            moaDir.mkdirs()
-        }
-        val targetFile = File(moaDir, sourceFile.name)
-        return runCatching {
-            FileInputStream(sourceFile).use { input ->
-                targetFile.outputStream().use { output ->
-                    input.copyTo(output)
+    private fun onMeetingFileRowClicked(row: MeetingFileRow) {
+        when {
+            row.localPath.isNotBlank() -> {
+                val file = File(row.localPath)
+                if (file.exists()) {
+                    openLocalMeetingFile(file)
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.detail_file_not_found),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
             }
-            true
-        }.getOrElse {
-            false
+            !row.downloadUrl.isNullOrBlank() -> downloadFromServer(row)
+            else ->
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.detail_download_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
         }
     }
 
-    private fun getMimeType(file: File): String {
-        val ext = file.extension.lowercase(Locale.ROOT)
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-            ?: when (ext) {
-                "pdf" -> "application/pdf"
-                "jpg", "jpeg" -> "image/jpeg"
-                "png" -> "image/png"
-                "webp" -> "image/webp"
-                "m4a" -> "audio/mp4"
-                "mp3" -> "audio/mpeg"
-                "wav" -> "audio/wav"
-                "aac" -> "audio/aac"
-                "mp4" -> "audio/mp4"
-                else -> "*/*"
+    private fun openLocalMeetingFile(file: File) {
+        val uri =
+            FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                file,
+            )
+        val mimeType = getMimeTypeForFile(file)
+        val intent =
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
+        try {
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.detail_no_viewer_app),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
-    private fun formatFileSize(size: Long): String {
-        if (size < 1024) return "${size} B"
-        if (size < 1024 * 1024) return "${size / 1024} KB"
-        return String.format(Locale.getDefault(), "%.1f MB", size / 1024f / 1024f)
+    private fun getMimeTypeForFile(file: File): String {
+        val ext = file.extension.lowercase(Locale.getDefault())
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
     }
+
+    private fun pathToMeetingFileRow(serverPath: String): MeetingFileRow {
+        val trimmed = serverPath.trim()
+        val name = trimmed.substringAfterLast('/').ifBlank { trimmed }
+        val ext = name.substringAfterLast('.', "").lowercase(Locale.getDefault())
+        val type =
+            when (ext) {
+                "pdf" -> MeetingFileRow.Type.PDF
+                "jpg", "jpeg", "png", "webp", "gif" -> MeetingFileRow.Type.IMAGE
+                "m4a", "mp3", "wav", "aac", "ogg", "flac" -> MeetingFileRow.Type.AUDIO
+                else -> MeetingFileRow.Type.DOCUMENT
+            }
+        val label = ext.uppercase(Locale.getDefault()).ifBlank { "FILE" }
+        return MeetingFileRow(
+            title = name,
+            subtitle = label,
+            localPath = "",
+            displayName = name,
+            type = type,
+            downloadUrl = resolveServerDownloadUrl(trimmed),
+        )
+    }
+
+    private fun resolveServerDownloadUrl(pathOrUrl: String): String {
+        val p = pathOrUrl.trim()
+        if (p.startsWith("http://", ignoreCase = true) || p.startsWith("https://", ignoreCase = true)) {
+            return p
+        }
+        val base = BuildConfig.MOA_API_BASE_URL.trimEnd('/')
+        return "$base/${p.removePrefix("/")}"
+    }
+
+    private fun downloadFromServer(row: MeetingFileRow) {
+        val url = row.downloadUrl ?: return
+        val dm = requireContext().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val request =
+            DownloadManager.Request(Uri.parse(url))
+                .setTitle(row.displayName)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(true)
+        TokenManager.getAccessToken()?.trim()?.takeIf { it.isNotEmpty() }?.let { token ->
+            request.addRequestHeader("Authorization", "Bearer $token")
+        }
+        runCatching {
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MOA/${row.displayName}")
+            dm.enqueue(request)
+        }.onSuccess {
+            Toast.makeText(requireContext(), getString(R.string.detail_download_started), Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            Toast.makeText(requireContext(), getString(R.string.detail_download_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun DecisionDto.toDecisionItem(): DecisionItem =
+        DecisionItem(
+            id = id,
+            meetingId = meetingId,
+            content = content,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+        )
+
+    private fun ActionItemDto.toDetailTaskItem(): DetailTaskItem =
+        DetailTaskItem(
+            id = id,
+            meetingId = meetingId,
+            title = task,
+            owner = assignee.orEmpty(),
+            deadline = dueDate.orEmpty(),
+        )
 }
-
-private fun DecisionDto.toDecisionItem(): DecisionItem =
-    DecisionItem(
-        id = id,
-        meetingId = meetingId,
-        content = content,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-    )
-
-private fun ActionItemDto.toDetailTaskItem(): DetailTaskItem =
-    DetailTaskItem(
-        id = id,
-        meetingId = meetingId,
-        title = task,
-        owner = assignee.orEmpty(),
-        deadline = dueDate.orEmpty(),
-    )

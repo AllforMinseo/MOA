@@ -172,7 +172,7 @@
             app:strokeWidth="1dp" />
     </LinearLayout>
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:id="@+id/summaryScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -244,18 +244,6 @@
                         android:text="—"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="@color/color_text_primary" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnViewTranscript"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="@string/detail_view_transcript"
-                        android:textAllCaps="false"
-                        app:cornerRadius="8dp"
-                        app:strokeColor="@color/moa_line"
-                        app:strokeWidth="1dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -311,6 +299,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:nestedScrollingEnabled="false" />
+
+                    <TextView
+                        android:id="@+id/emptyDecisionsHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="@string/detail_decisions_empty"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/color_text_secondary"
+                        android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -369,18 +368,35 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/fileRecycler"
+    <FrameLayout
+        android:id="@+id/fileTabContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingStart="16dp"
-        android:paddingTop="6dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="20dp"
-        android:visibility="gone" />
+        android:visibility="gone">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/fileRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="20dp" />
+
+        <TextView
+            android:id="@+id/fileEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="@string/detail_files_empty"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/color_text_secondary"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </LinearLayout>
