@@ -45,6 +45,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     private var isSummaryTab = true
 
     private lateinit var titleView: TextView
+    private lateinit var meetingDateView: TextView
+    private lateinit var meetingTimeView: TextView
     private lateinit var summaryBtn: MaterialButton
     private lateinit var fileBtn: MaterialButton
     private lateinit var fileRecycler: RecyclerView
@@ -66,6 +68,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         super.onViewCreated(view, savedInstanceState)
 
         titleView = view.findViewById(R.id.title)
+        meetingDateView = view.findViewById(R.id.meetingDate)
+        meetingTimeView = view.findViewById(R.id.meetingTime)
         summaryBtn = view.findViewById(R.id.tabSummary)
         fileBtn = view.findViewById(R.id.tabFiles)
         fileRecycler = view.findViewById(R.id.fileRecycler)
@@ -97,6 +101,9 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         actionRecycler.adapter = actionAdapter
 
         summaryText.text = "—"
+        view.findViewById<View>(R.id.btnEditMeetingInfo).setOnClickListener {
+            Toast.makeText(requireContext(), "회의 정보 수정은 준비 중입니다.", Toast.LENGTH_SHORT).show()
+        }
         view.findViewById<View>(R.id.btnAddDecision).setOnClickListener { showAddDecisionDialog() }
         view.findViewById<View>(R.id.btnAddAction).setOnClickListener { showAddActionDialog() }
 
@@ -105,7 +112,27 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         showSummary(summaryScroll, fileRecycler)
 
         if (meetingId > 0) {
+            refreshMeetingHeader()
             refreshSummaryFromServer()
+        }
+    }
+
+    private fun refreshMeetingHeader() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    meetingRepository.getMeeting(meetingId)
+                }
+            }.onSuccess { dto ->
+                titleView.text = dto.title.ifBlank { meetingTitle }
+                meetingDateView.text = dto.meetingDate?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
+                meetingTimeView.text = dto.meetingTime?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
+            }.onFailure { error ->
+                if (handleUnauthorized(error)) return@launch
+                titleView.text = meetingTitle
+                meetingDateView.text = "—"
+                meetingTimeView.text = "—"
+            }
         }
     }
 
