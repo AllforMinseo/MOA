@@ -6,6 +6,12 @@ import com.example.a20260310.data.remote.MeetingApiService
 import com.example.a20260310.data.remote.dto.ImageUploadResponseDto
 import com.example.a20260310.data.remote.dto.MeetingCreateRequest
 import com.example.a20260310.data.remote.dto.MeetingResponseDto
+import com.example.a20260310.data.remote.dto.ActionItemCreateRequestDto
+import com.example.a20260310.data.remote.dto.ActionItemDto
+import com.example.a20260310.data.remote.dto.ActionItemUpdateRequestDto
+import com.example.a20260310.data.remote.dto.DecisionCreateRequestDto
+import com.example.a20260310.data.remote.dto.DecisionDto
+import com.example.a20260310.data.remote.dto.DecisionUpdateRequestDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
@@ -132,5 +138,45 @@ class MeetingRepository(
 
     suspend fun deleteMeeting(meetingId: Int): Response<Unit> {
         return api.deleteMeeting(meetingId)
+    }
+
+    suspend fun createDecision(meetingId: Int, content: String): DecisionDto {
+        return api.createDecision(meetingId, DecisionCreateRequestDto(content = content))
+    }
+
+    suspend fun updateDecision(decisionId: Int, content: String): DecisionDto {
+        return api.updateDecision(decisionId, DecisionUpdateRequestDto(content = content))
+    }
+
+    suspend fun deleteDecision(decisionId: Int): Response<Unit> {
+        return api.deleteDecision(decisionId)
+    }
+
+    suspend fun createActionItem(
+        meetingId: Int,
+        task: String,
+        assignee: String?,
+        dueDate: String?,
+    ): ActionItemDto {
+        return api.createActionItem(
+            meetingId,
+            ActionItemCreateRequestDto(task = task, assignee = assignee, dueDate = dueDate),
+        )
+    }
+
+    suspend fun updateActionItem(
+        actionItemId: Int,
+        task: String,
+        assignee: String?,
+        dueDate: String?,
+    ): ActionItemDto {
+        return api.updateActionItem(
+            actionItemId,
+            ActionItemUpdateRequestDto(task = task, assignee = assignee, dueDate = dueDate),
+        )
+    }
+
+    suspend fun deleteActionItem(actionItemId: Int): Response<Unit> {
+        return api.deleteActionItem(actionItemId)
     }
 }

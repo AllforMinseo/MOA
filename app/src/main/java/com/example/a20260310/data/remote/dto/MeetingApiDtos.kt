@@ -58,16 +58,16 @@ data class SummaryGenerateResponseDto(
 data class SummaryDetailResponseDto(
     @SerializedName("id") val id: Int,
     @SerializedName("meeting_id") val meetingId: Int,
-    @SerializedName("summary") val summary: LlmSummaryPayload,
+    @SerializedName("summary") val summary: String,
+    @SerializedName("decisions") val decisions: List<DecisionDto> = emptyList(),
+    @SerializedName("action_items") val actionItems: List<ActionItemDto> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null,
 )
 
+/** PATCH /meetings/{id}/summary — 본문만 수정 (결정·할 일은 전용 API 사용). */
 data class SummaryUpdateRequest(
     @SerializedName("summary") val summary: String = "",
-    @SerializedName("decisions") val decisions: List<String> = emptyList(),
-    @SerializedName("action_items") val actionItems: List<ActionItemPayload> = emptyList(),
-    @SerializedName("error") val error: String? = null,
 )
 
 data class DecisionDto(
@@ -84,16 +84,6 @@ data class ActionItemDto(
     @SerializedName("task") val task: String,
     @SerializedName("assignee") val assignee: String? = null,
     @SerializedName("due_date") val dueDate: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
-    @SerializedName("updated_at") val updatedAt: String? = null,
-)
-
-data class MeetingSummaryResponseDto(
-    @SerializedName("id") val id: Int,
-    @SerializedName("meeting_id") val meetingId: Int,
-    @SerializedName("summary") val summary: String,
-    @SerializedName("decisions") val decisions: List<DecisionDto> = emptyList(),
-    @SerializedName("action_items") val actionItems: List<ActionItemDto> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null,
 )
