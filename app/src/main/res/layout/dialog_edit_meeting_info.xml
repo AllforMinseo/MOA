@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:hint="날짜 (예: 2025.05.12)">
+        android:hint="날짜 (예: 2026.05.12)">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/inputMeetingDate"
@@ -41,6 +41,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="참석자 (쉼표로 구분)">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputMeetingAttendees"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:gravity="top" />
     </com.google.android.material.textfield.TextInputLayout>
 
 </LinearLayout>

@@ -77,4 +77,20 @@
     <string name="signup_error_invalid_username">아이디는 4~20자, 영문 소문자로 시작하고 소문자/숫자/_/.만 사용할 수 있습니다.</string>
     <string name="signup_error_invalid_password">비밀번호는 8~32자이며 영문과 숫자를 포함해야 합니다.</string>
     <string name="signup_error_password_mismatch">비밀번호가 일치하지 않습니다.</string>
+
+    <string name="detail_delete_meeting">회의 삭제</string>
+    <string name="detail_attendees_label">참석자</string>
+    <string name="detail_attendees_empty">참석자 없음</string>
+    <string name="detail_edit_meeting_info">회의 정보 수정</string>
+    <string name="detail_label_date">날짜</string>
+    <string name="detail_label_time">시간</string>
+    <string name="detail_tab_summary">요약</string>
+    <string name="detail_tab_files">파일</string>
+    <string name="detail_section_summary">회의 요약</string>
+    <string name="detail_edit_summary">회의 요약 수정</string>
+    <string name="detail_view_transcript">전사 보기</string>
+    <string name="detail_section_decisions">결정 사항</string>
+    <string name="detail_add_decision">결정 사항 추가</string>
+    <string name="detail_section_actions">할 일</string>
+    <string name="detail_add_action">할 일 추가</string>
 </resources>

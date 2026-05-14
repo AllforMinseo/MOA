@@ -15,7 +15,10 @@ import com.example.a20260310.data.remote.dto.DecisionUpdateRequestDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
+import com.example.a20260310.data.remote.dto.MeetingFullTranscriptResponseDto
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -56,6 +59,33 @@ class MeetingRepository(
 
     suspend fun getMeeting(meetingId: Int): MeetingResponseDto {
         return api.getMeeting(meetingId)
+    }
+
+    /**
+     * PATCH /meetings/{id} — 상세 화면 회의 정보 수정용.
+     * [attendees]는 빈 목록이면 서버에 빈 배열로 반영한다.
+     */
+    suspend fun updateMeeting(
+        meetingId: Int,
+        title: String,
+        meetingDate: String,
+        meetingTime: String,
+        attendees: List<String>,
+    ): MeetingResponseDto {
+        val trimmedTitle = title.trim()
+        require(trimmedTitle.isNotEmpty()) { "제목은 비울 수 없습니다." }
+        val body = JsonObject()
+        body.addProperty("title", trimmedTitle)
+        body.addProperty("meeting_date", meetingDate.trim())
+        body.addProperty("meeting_time", meetingTime.trim())
+        val arr = JsonArray()
+        attendees.map { it.trim() }.filter { it.isNotEmpty() }.forEach { arr.add(it) }
+        body.add("attendees", arr)
+        return api.updateMeeting(meetingId, body)
+    }
+
+    suspend fun getMeetingFullTranscript(meetingId: Int): MeetingFullTranscriptResponseDto {
+        return api.getMeetingFullTranscript(meetingId)
     }
 
     suspend fun uploadAudioFiles(meetingId: Int, files: List<File>): TranscriptResponseDto {

@@ -29,6 +29,12 @@ data class TranscriptResponseDto(
     @SerializedName("updated_at") val updatedAt: String? = null,
 )
 
+/** GET /meetings/{id}/transcript — 회의 전체 전사 문자열. */
+data class MeetingFullTranscriptResponseDto(
+    @SerializedName("meeting_id") val meetingId: Int,
+    @SerializedName("transcript") val transcript: String,
+)
+
 data class ImageUploadResponseDto(
     @SerializedName("meeting_id") val meetingId: Int,
     @SerializedName("file_path") val filePath: String,

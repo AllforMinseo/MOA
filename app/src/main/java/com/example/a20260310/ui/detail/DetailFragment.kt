@@ -7,14 +7,24 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,17 +35,18 @@ import com.example.a20260310.data.model.DetailTaskItem
 import com.example.a20260310.data.model.MeetingFileRow
 import com.example.a20260310.data.remote.dto.ActionItemDto
 import com.example.a20260310.data.remote.dto.DecisionDto
+import com.example.a20260310.data.remote.dto.MeetingResponseDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
-import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
-import com.example.a20260310.data.repository.MeetingRepository
+import com.example.a20260310.viewmodel.DetailViewModel
+import com.example.a20260310.viewmodel.DetailViewModelFactory
+import com.example.a20260310.viewmodel.MeetingDetailEffect
+import com.example.a20260310.viewmodel.MeetingDetailUiState
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import retrofit2.HttpException
 import java.io.File
 import java.io.FileInputStream
 import java.util.Locale
@@ -44,9 +55,11 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private var isSummaryTab = true
 
+    private lateinit var detailProgress: ProgressBar
     private lateinit var titleView: TextView
     private lateinit var meetingDateView: TextView
     private lateinit var meetingTimeView: TextView
+    private lateinit var meetingAttendeesView: TextView
     private lateinit var summaryBtn: MaterialButton
     private lateinit var fileBtn: MaterialButton
     private lateinit var fileRecycler: RecyclerView
@@ -56,10 +69,12 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     private lateinit var decisionAdapter: DecisionAdapter
     private lateinit var actionAdapter: ActionAdapter
 
-    private val meetingRepository = MeetingRepository()
-
     private val meetingId: Int
         get() = arguments?.takeIf { it.containsKey("meetingId") }?.getInt("meetingId", 0) ?: 0
+
+    private val viewModel: DetailViewModel by viewModels {
+        DetailViewModelFactory(meetingId)
+    }
 
     private val meetingTitle: String
         get() = arguments?.getString("meetingTitle") ?: "회의"
@@ -67,9 +82,11 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        detailProgress = view.findViewById(R.id.detailProgress)
         titleView = view.findViewById(R.id.title)
         meetingDateView = view.findViewById(R.id.meetingDate)
         meetingTimeView = view.findViewById(R.id.meetingTime)
+        meetingAttendeesView = view.findViewById(R.id.meetingAttendees)
         summaryBtn = view.findViewById(R.id.tabSummary)
         fileBtn = view.findViewById(R.id.tabFiles)
         fileRecycler = view.findViewById(R.id.fileRecycler)
@@ -101,39 +118,191 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         actionRecycler.adapter = actionAdapter
 
         summaryText.text = "—"
+        meetingAttendeesView.text = getString(R.string.detail_attendees_empty)
+        meetingAttendeesView.setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.color_text_secondary),
+        )
+
         view.findViewById<View>(R.id.btnEditMeetingInfo).setOnClickListener {
-            Toast.makeText(requireContext(), "회의 정보 수정은 준비 중입니다.", Toast.LENGTH_SHORT).show()
+            showEditMeetingInfoDialog()
+        }
+        view.findViewById<View>(R.id.btnViewTranscript).setOnClickListener {
+            viewModel.loadTranscript()
         }
         view.findViewById<View>(R.id.btnAddDecision).setOnClickListener { showAddDecisionDialog() }
         view.findViewById<View>(R.id.btnAddAction).setOnClickListener { showAddActionDialog() }
 
         setupListeners(view)
+        setupToolbarMenu()
         updateTabs(summaryBtn, fileBtn)
         showSummary(summaryScroll, fileRecycler)
 
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.uiState.collect { state -> applyUiState(state) }
+                }
+                launch {
+                    viewModel.effects.collect { effect -> handleEffect(effect, view) }
+                }
+            }
+        }
+
         if (meetingId > 0) {
-            refreshMeetingHeader()
-            refreshSummaryFromServer()
+            viewModel.loadInitial()
+        } else {
+            meetingDateView.text = "—"
+            meetingTimeView.text = "—"
+            bindAttendees(null)
         }
     }
 
-    private fun refreshMeetingHeader() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    meetingRepository.getMeeting(meetingId)
+    private fun setupToolbarMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(
+            object : MenuProvider {
+                override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                    menuInflater.inflate(R.menu.menu_detail, menu)
                 }
-            }.onSuccess { dto ->
-                titleView.text = dto.title.ifBlank { meetingTitle }
-                meetingDateView.text = dto.meetingDate?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
-                meetingTimeView.text = dto.meetingTime?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
-            }.onFailure { error ->
-                if (handleUnauthorized(error)) return@launch
-                titleView.text = meetingTitle
-                meetingDateView.text = "—"
-                meetingTimeView.text = "—"
-            }
+
+                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                    return when (menuItem.itemId) {
+                        R.id.action_delete_meeting -> {
+                            showDeleteMeetingDialog()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            },
+            viewLifecycleOwner,
+            Lifecycle.State.RESUMED,
+        )
+    }
+
+    private fun applyUiState(state: MeetingDetailUiState) {
+        detailProgress.visibility = if (state.isLoading) View.VISIBLE else View.GONE
+        val meeting = state.meeting
+        if (meeting != null) {
+            titleView.text = meeting.title.ifBlank { meetingTitle }
+            meetingDateView.text = meeting.meetingDate?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
+            meetingTimeView.text = meeting.meetingTime?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
+            bindAttendees(meeting)
+        } else if (meetingId <= 0) {
+            titleView.text = meetingTitle
+            meetingDateView.text = "—"
+            meetingTimeView.text = "—"
+            bindAttendees(null)
         }
+        state.summary?.let { bindSummaryDetail(it) }
+    }
+
+    private fun bindAttendees(meeting: MeetingResponseDto?) {
+        val names =
+            meeting?.attendees
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
+        if (names.isEmpty()) {
+            meetingAttendeesView.text = getString(R.string.detail_attendees_empty)
+            meetingAttendeesView.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.color_text_secondary),
+            )
+        } else {
+            meetingAttendeesView.text = names.joinToString(", ")
+            meetingAttendeesView.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.color_text_primary),
+            )
+        }
+    }
+
+    private fun handleEffect(effect: MeetingDetailEffect, root: View) {
+        when (effect) {
+            is MeetingDetailEffect.Toast ->
+                Toast.makeText(requireContext(), effect.message, Toast.LENGTH_SHORT).show()
+
+            is MeetingDetailEffect.Error ->
+                Snackbar.make(root, effect.message, Snackbar.LENGTH_LONG).show()
+
+            MeetingDetailEffect.NavigateToLogin -> {
+                TokenManager.clear()
+                findNavController().navigate(R.id.loginFragment)
+            }
+
+            MeetingDetailEffect.MeetingDeleted -> {
+                Toast.makeText(requireContext(), "회의가 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                findNavController().popBackStack()
+            }
+
+            is MeetingDetailEffect.TranscriptReady -> showTranscriptDialog(effect.text)
+        }
+    }
+
+    private fun showTranscriptDialog(text: String) {
+        val scroll =
+            ScrollView(requireContext()).apply {
+                val tv =
+                    TextView(requireContext()).apply {
+                        setTextIsSelectable(true)
+                        textSize = 14f
+                        setPadding(48, 24, 48, 24)
+                        this.text = text
+                    }
+                addView(tv)
+            }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("회의 전사")
+            .setView(scroll)
+            .setPositiveButton("닫기", null)
+            .show()
+    }
+
+    private fun showEditMeetingInfoDialog() {
+        if (meetingId <= 0) {
+            Toast.makeText(requireContext(), "유효한 회의가 아니면 서버에 저장할 수 없습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val dialogView =
+            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_meeting_info, null, false)
+        val inputTitle = dialogView.findViewById<TextInputEditText>(R.id.inputMeetingTitle)
+        val inputDate = dialogView.findViewById<TextInputEditText>(R.id.inputMeetingDate)
+        val inputTime = dialogView.findViewById<TextInputEditText>(R.id.inputMeetingTime)
+        val inputAttendees = dialogView.findViewById<TextInputEditText>(R.id.inputMeetingAttendees)
+
+        val m = viewModel.uiState.value.meeting
+        inputTitle.setText(m?.title ?: titleView.text?.toString().orEmpty())
+        inputDate.setText(
+            when {
+                m?.meetingDate?.isNotBlank() == true -> m.meetingDate
+                meetingDateView.text.toString() != "—" -> meetingDateView.text.toString()
+                else -> ""
+            },
+        )
+        inputTime.setText(
+            when {
+                m?.meetingTime?.isNotBlank() == true -> m.meetingTime
+                meetingTimeView.text.toString() != "—" -> meetingTimeView.text.toString()
+                else -> ""
+            },
+        )
+        inputAttendees.setText(m?.attendees?.joinToString(", ").orEmpty())
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("회의 정보 수정")
+            .setView(dialogView)
+            .setPositiveButton("저장") { _, _ ->
+                val title = inputTitle.text?.toString().orEmpty()
+                if (title.isBlank()) {
+                    Toast.makeText(requireContext(), "제목을 입력해 주세요.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val date = inputDate.text?.toString().orEmpty()
+                val time = inputTime.text?.toString().orEmpty()
+                val attendees = inputAttendees.text?.toString().orEmpty()
+                viewModel.updateMeetingInfo(title, date, time, attendees)
+            }
+            .setNegativeButton("취소", null)
+            .show()
     }
 
     private fun setupListeners(view: View) {
@@ -152,10 +321,6 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         view.findViewById<View>(R.id.btnEditSummary).setOnClickListener {
             showEditSummaryDialog()
         }
-
-        view.findViewById<View>(R.id.btnDeleteMeeting).setOnClickListener {
-            showDeleteMeetingDialog()
-        }
     }
 
     private fun showDeleteMeetingDialog() {
@@ -166,45 +331,9 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         AlertDialog.Builder(requireContext())
             .setTitle("회의 삭제")
             .setMessage("삭제하시겠습니까?")
-            .setPositiveButton("삭제") { _, _ -> deleteMeeting() }
+            .setPositiveButton("삭제") { _, _ -> viewModel.deleteMeeting() }
             .setNegativeButton("취소", null)
             .show()
-    }
-
-    private fun deleteMeeting() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    meetingRepository.deleteMeeting(meetingId)
-                }
-            }.onSuccess { response ->
-                if (response.isSuccessful) {
-                    Toast.makeText(requireContext(), "회의가 삭제되었습니다.", Toast.LENGTH_SHORT).show()
-                    findNavController().popBackStack()
-                } else {
-                    Toast.makeText(requireContext(), "회의 삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                }
-            }.onFailure { error ->
-                if (handleUnauthorized(error)) return@onFailure
-                Toast.makeText(requireContext(), "회의 삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun refreshSummaryFromServer() {
-        if (meetingId <= 0) return
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    meetingRepository.getSummary(meetingId)
-                }
-            }.onSuccess { detail ->
-                bindSummaryDetail(detail)
-            }.onFailure { error ->
-                if (handleUnauthorized(error)) return@onFailure
-                Toast.makeText(requireContext(), "회의 요약을 불러오지 못했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     private fun bindSummaryDetail(detail: SummaryDetailResponseDto) {
@@ -215,7 +344,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private fun showEditSummaryDialog() {
         if (meetingId <= 0) {
-            Toast.makeText(requireContext(), "저장할 회의 정보가 없습니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "유효한 회의가 아니면 서버에 저장할 수 없습니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -231,29 +360,10 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             .setView(dialogView)
             .setPositiveButton("저장") { _, _ ->
                 val text = etSummary.text?.toString().orEmpty().trim()
-                patchSummaryBody(text)
+                viewModel.patchSummaryBody(text)
             }
             .setNegativeButton("취소", null)
             .show()
-    }
-
-    private fun patchSummaryBody(summary: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    meetingRepository.updateSummary(
-                        meetingId,
-                        SummaryUpdateRequest(summary = summary),
-                    )
-                }
-            }.onSuccess { detail ->
-                bindSummaryDetail(detail)
-                Toast.makeText(requireContext(), "수정되었습니다.", Toast.LENGTH_SHORT).show()
-            }.onFailure { error ->
-                if (handleUnauthorized(error)) return@onFailure
-                Toast.makeText(requireContext(), "수정에 실패했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     private fun showAddDecisionDialog() {
@@ -265,19 +375,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             .setPositiveButton("저장") { _, _ ->
                 val text = editText.text.toString().trim()
                 if (text.isEmpty()) return@setPositiveButton
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.createDecision(meetingId, text)
-                        }
-                    }.onSuccess {
-                        refreshSummaryFromServer()
-                        Toast.makeText(requireContext(), "추가되었습니다.", Toast.LENGTH_SHORT).show()
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "추가에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.addDecision(text)
             }
             .setNegativeButton("취소", null)
             .show()
@@ -293,23 +391,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             .setPositiveButton("저장") { _, _ ->
                 val text = editText.text.toString().trim()
                 if (text.isEmpty()) return@setPositiveButton
-                if (item.id <= 0) {
-                    decisionAdapter.updateItem(position, text)
-                    return@setPositiveButton
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.updateDecision(item.id, text)
-                        }
-                    }.onSuccess {
-                        refreshSummaryFromServer()
-                        Toast.makeText(requireContext(), "수정되었습니다.", Toast.LENGTH_SHORT).show()
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "수정에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.updateDecision(item.id, text)
             }
             .setNegativeButton("취소", null)
             .show()
@@ -320,27 +402,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             .setMessage("이 결정 사항을 삭제할까요?")
             .setPositiveButton("삭제") { _, _ ->
                 if (!ensureHasMeetingId()) return@setPositiveButton
-                if (item.id <= 0) {
-                    decisionAdapter.removeItem(position)
-                    return@setPositiveButton
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.deleteDecision(item.id)
-                        }
-                    }.onSuccess { resp ->
-                        if (resp.isSuccessful) {
-                            refreshSummaryFromServer()
-                            Toast.makeText(requireContext(), "삭제되었습니다.", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(requireContext(), "삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                        }
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.deleteDecision(item.id)
             }
             .setNegativeButton("취소", null)
             .show()
@@ -362,24 +424,11 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                 if (titleText.isEmpty()) return@setPositiveButton
                 val owner = ownerInput.text.toString().trim()
                 val deadline = deadlineInput.text.toString().trim()
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.createActionItem(
-                                meetingId = meetingId,
-                                task = titleText,
-                                assignee = owner.ifBlank { null },
-                                dueDate = deadline.ifBlank { null },
-                            )
-                        }
-                    }.onSuccess {
-                        refreshSummaryFromServer()
-                        Toast.makeText(requireContext(), "추가되었습니다.", Toast.LENGTH_SHORT).show()
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "추가에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.addActionItem(
+                    task = titleText,
+                    assignee = owner.ifBlank { null },
+                    dueDate = deadline.ifBlank { null },
+                )
             }
             .setNegativeButton("취소", null)
             .show()
@@ -404,31 +453,12 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                 if (titleText.isEmpty()) return@setPositiveButton
                 val owner = ownerInput.text.toString().trim()
                 val deadline = deadlineInput.text.toString().trim()
-                if (item.id <= 0) {
-                    actionAdapter.updateItem(
-                        position,
-                        item.copy(title = titleText, owner = owner, deadline = deadline),
-                    )
-                    return@setPositiveButton
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.updateActionItem(
-                                actionItemId = item.id,
-                                task = titleText,
-                                assignee = owner.ifBlank { null },
-                                dueDate = deadline.ifBlank { null },
-                            )
-                        }
-                    }.onSuccess {
-                        refreshSummaryFromServer()
-                        Toast.makeText(requireContext(), "수정되었습니다.", Toast.LENGTH_SHORT).show()
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "수정에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.updateActionItem(
+                    actionItemId = item.id,
+                    task = titleText,
+                    assignee = owner.ifBlank { null },
+                    dueDate = deadline.ifBlank { null },
+                )
             }
             .setNegativeButton("취소", null)
             .show()
@@ -439,27 +469,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
             .setMessage("이 할 일을 삭제할까요?")
             .setPositiveButton("삭제") { _, _ ->
                 if (!ensureHasMeetingId()) return@setPositiveButton
-                if (item.id <= 0) {
-                    actionAdapter.removeItem(position)
-                    return@setPositiveButton
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            meetingRepository.deleteActionItem(item.id)
-                        }
-                    }.onSuccess { resp ->
-                        if (resp.isSuccessful) {
-                            refreshSummaryFromServer()
-                            Toast.makeText(requireContext(), "삭제되었습니다.", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(requireContext(), "삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                        }
-                    }.onFailure { error ->
-                        if (handleUnauthorized(error)) return@launch
-                        Toast.makeText(requireContext(), "삭제에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                viewModel.deleteActionItem(item.id)
             }
             .setNegativeButton("취소", null)
             .show()
@@ -467,33 +477,45 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private fun ensureHasMeetingId(): Boolean {
         if (meetingId <= 0) {
-            Toast.makeText(requireContext(), "회의 정보가 없습니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "유효한 회의가 아니면 서버에 저장할 수 없습니다.", Toast.LENGTH_SHORT).show()
             return false
         }
         return true
     }
 
-    private fun handleUnauthorized(error: Throwable): Boolean {
-        if (error is HttpException && error.code() == 401) {
-            TokenManager.clear()
-            findNavController().navigate(R.id.loginFragment)
-            return true
+    private fun updateTabs(summaryBtn: MaterialButton, fileBtn: MaterialButton) {
+        val primary = ContextCompat.getColor(requireContext(), R.color.color_primary)
+        val onPrimary = ContextCompat.getColor(requireContext(), R.color.color_on_primary)
+        val surface = ContextCompat.getColor(requireContext(), R.color.color_surface)
+        val textPrimary = ContextCompat.getColor(requireContext(), R.color.color_text_primary)
+        val line = ContextCompat.getColor(requireContext(), R.color.moa_line)
+        val strokePx = (resources.displayMetrics.density * 1f).toInt().coerceAtLeast(1)
+        if (isSummaryTab) {
+            applyTabSelected(summaryBtn, primary, onPrimary)
+            applyTabUnselected(fileBtn, surface, textPrimary, line, strokePx)
+        } else {
+            applyTabUnselected(summaryBtn, surface, textPrimary, line, strokePx)
+            applyTabSelected(fileBtn, primary, onPrimary)
         }
-        return false
     }
 
-    private fun updateTabs(summaryBtn: MaterialButton, fileBtn: MaterialButton) {
-        if (isSummaryTab) {
-            fileBtn.setBackgroundColor(resources.getColor(R.color.color_on_primary, null))
-            fileBtn.setTextColor(resources.getColor(android.R.color.black, null))
-            summaryBtn.setBackgroundColor(resources.getColor(R.color.color_primary, null))
-            summaryBtn.setTextColor(resources.getColor(R.color.color_on_primary, null))
-        } else {
-            summaryBtn.setBackgroundColor(resources.getColor(R.color.color_on_primary, null))
-            summaryBtn.setTextColor(resources.getColor(android.R.color.black, null))
-            fileBtn.setBackgroundColor(resources.getColor(R.color.color_primary, null))
-            fileBtn.setTextColor(resources.getColor(R.color.color_on_primary, null))
-        }
+    private fun applyTabSelected(btn: MaterialButton, bg: Int, fg: Int) {
+        btn.backgroundTintList = android.content.res.ColorStateList.valueOf(bg)
+        btn.strokeWidth = 0
+        btn.setTextColor(fg)
+    }
+
+    private fun applyTabUnselected(
+        btn: MaterialButton,
+        bg: Int,
+        fg: Int,
+        stroke: Int,
+        strokePx: Int,
+    ) {
+        btn.backgroundTintList = android.content.res.ColorStateList.valueOf(bg)
+        btn.strokeColor = android.content.res.ColorStateList.valueOf(stroke)
+        btn.strokeWidth = strokePx
+        btn.setTextColor(fg)
     }
 
     private fun showSummary(summaryScroll: View, recycler: RecyclerView) {

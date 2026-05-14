@@ -12,7 +12,9 @@ import com.example.a20260310.data.remote.dto.MeetingResponseDto
 import com.example.a20260310.data.remote.dto.SummaryDetailResponseDto
 import com.example.a20260310.data.remote.dto.SummaryGenerateResponseDto
 import com.example.a20260310.data.remote.dto.SummaryUpdateRequest
+import com.example.a20260310.data.remote.dto.MeetingFullTranscriptResponseDto
 import com.example.a20260310.data.remote.dto.TranscriptResponseDto
+import com.google.gson.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -40,6 +42,12 @@ interface MeetingApiService {
         @Path("meetingId") meetingId: Int,
     ): MeetingResponseDto
 
+    @PATCH("meetings/{meetingId}")
+    suspend fun updateMeeting(
+        @Path("meetingId") meetingId: Int,
+        @Body body: JsonObject,
+    ): MeetingResponseDto
+
     @Multipart
     @POST("upload/audio/{meeting_id}")
     suspend fun uploadAudioFiles(
@@ -64,6 +72,11 @@ interface MeetingApiService {
     suspend fun getSummary(
         @Path("meetingId") meetingId: Int,
     ): SummaryDetailResponseDto
+
+    @GET("meetings/{meetingId}/transcript")
+    suspend fun getMeetingFullTranscript(
+        @Path("meetingId") meetingId: Int,
+    ): MeetingFullTranscriptResponseDto
 
     @PATCH("meetings/{meetingId}/summary")
     suspend fun updateSummary(
