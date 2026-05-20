@@ -11,12 +11,7 @@
         android:title="@string/nav_meeting" />
 
     <item
-        android:id="@+id/resultFragment"
-        android:icon="@android:drawable/ic_menu_agenda"
-        android:title="@string/nav_result" />
-
-    <item
         android:id="@+id/historyFragment"
-        android:icon="@android:drawable/ic_menu_recent_history"
+        android:icon="@android:drawable/ic_menu_manage"
         android:title="@string/nav_history" />
 </menu>

@@ -2,26 +2,145 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/homeFragment">
+    app:startDestination="@id/splashFragment">
+
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.example.a20260310.ui.splash.SplashFragment"
+        android:label="Splash">
+        <action
+            android:id="@+id/action_splashFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splashFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.a20260310.ui.login.LoginFragment"
+        android:label="@string/login_title">
+        <action
+            android:id="@+id/action_loginFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_loginFragment_to_signupFragment"
+            app:destination="@id/signupFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/signupFragment"
+        android:name="com.example.a20260310.ui.login.SignupFragment"
+        android:label="@string/signup_title">
+        <action
+            android:id="@+id/action_signupFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/signupFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
 
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.a20260310.ui.home.HomeFragment"
-        android:label="@string/nav_home" />
+        android:label="@string/nav_home">
+        <action
+            android:id="@+id/action_homeFragment_to_folderSelectFragment"
+            app:destination="@id/folderSelectFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_summaryFragment"
+            app:destination="@id/summaryFragment" />
+    </fragment>
 
     <fragment
-        android:id="@+id/meetingFragment"
-        android:name="com.example.a20260310.ui.meeting.MeetingFragment"
-        android:label="@string/nav_meeting" />
+        android:id="@+id/folderSelectFragment"
+        android:name="com.example.a20260310.ui.add.FolderSelectFragment"
+        android:label="@string/nav_meeting_upload">
+        <action
+            android:id="@+id/action_folderSelectFragment_to_meetingCreateFragment"
+            app:destination="@id/meetingCreateFragment" />
+    </fragment>
 
     <fragment
-        android:id="@+id/resultFragment"
-        android:name="com.example.a20260310.ui.result.ResultFragment"
-        android:label="@string/nav_result" />
+        android:id="@+id/meetingCreateFragment"
+        android:name="com.example.a20260310.ui.add.MeetingCreateFragment"
+        android:label="@string/nav_meeting_upload">
+        <action
+            android:id="@+id/action_meetingCreateFragment_to_addMethodFragment"
+            app:destination="@id/addMethodFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addMethodFragment"
+        android:name="com.example.a20260310.ui.add.AddMethodFragment"
+        android:label="@string/nav_meeting_upload">
+        <action
+            android:id="@+id/action_addMethodFragment_to_recordingFragment"
+            app:destination="@id/recordingFragment" />
+        <action
+            android:id="@+id/action_addMethodFragment_to_summarizingFragment"
+            app:destination="@id/summarizingFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/recordingFragment"
+        android:name="com.example.a20260310.ui.recording.RecordingFragment"
+        android:label="@string/nav_recording">
+        <action
+            android:id="@+id/action_recordingFragment_to_addMethodFragment"
+            app:destination="@id/addMethodFragment"
+            app:popUpTo="@id/addMethodFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/summarizingFragment"
+        android:name="com.example.a20260310.ui.summary.SummarizingFragment"
+        android:label="@string/summarizing_title">
+        <action
+            android:id="@+id/action_summarizingFragment_to_summaryFragment"
+            app:destination="@id/summaryFragment"
+            app:popUpTo="@id/summarizingFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_summarizingFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/summaryFragment"
+        android:name="com.example.a20260310.ui.summary.SummaryFragment"
+        android:label="@string/nav_meeting_summary">
+        <action
+            android:id="@+id/action_summaryFragment_to_addCompleteFragment"
+            app:destination="@id/addCompleteFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addCompleteFragment"
+        android:name="com.example.a20260310.ui.addcomplete.AddCompleteFragment"
+        android:label="@string/nav_meeting_upload" />
 
     <fragment
         android:id="@+id/historyFragment"
         android:name="com.example.a20260310.ui.history.HistoryFragment"
         android:label="@string/nav_history" />
+
+    <fragment
+        android:id="@+id/detailFragment"
+        android:name="com.example.a20260310.ui.detail.DetailFragment"
+        android:label="회의 상세" />
+
+    <action
+        android:id="@+id/action_homeFragment_to_detailFragment"
+        app:destination="@id/detailFragment" />
+
 
 </navigation>

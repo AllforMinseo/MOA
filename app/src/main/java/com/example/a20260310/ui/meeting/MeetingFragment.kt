@@ -27,4 +27,3 @@ class MeetingFragment : Fragment(R.layout.fragment_meeting) {
         }
     }
 }
-
