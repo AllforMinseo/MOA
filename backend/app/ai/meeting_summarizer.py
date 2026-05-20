@@ -104,8 +104,8 @@ def _build_payload_prompt(payload: Dict[str, Any]) -> str:
         '  "summary": "...",\n'
         '  "decisions": ["..."],\n'
         '  "action_items": [\n'
-        '    { "task": "...", "assignee": "...", "due_date": "" }\n'
-        "]\n"
+        '    { "task": "...", "owner": "...", "deadline": "..." }\n'
+        "  ]\n"
         "}\n"
         "\n"
         "입력 payload(JSON):\n"
@@ -147,24 +147,15 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
 
     client = get_openai_client()
 
-    logger.info("===== LLM PROMPT START =====")
-    logger.info(prompt)
-    logger.info("===== LLM PROMPT END =====")
-
     try:
         response = client.chat.completions.create(
             model=settings.openai_model,
-            temperature=0.1,
+            temperature=0.2,
             response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "당신은 회의 요약 시스템입니다. "
-                        "반드시 입력 내용에만 기반해서 JSON을 생성하세요. "
-                        "입력에 없는 인물, 사건, 결정사항을 절대 만들어내지 마세요. "
-                        "반드시 유효한 JSON만 반환하세요."
-                    ),
+                    "content": "반드시 유효한 JSON만 반환하세요.",
                 },
                 {
                     "role": "user",
@@ -175,10 +166,6 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
 
         content = (response.choices[0].message.content or "").strip()
 
-        logger.info("===== LLM RAW RESPONSE START =====")
-        logger.info(content)
-        logger.info("===== LLM RAW RESPONSE END =====")
-
     except Exception as e:
         logger.exception("OpenAI API 호출 실패")
         raise RuntimeError(f"OpenAI API 호출에 실패했습니다: {e}") from e
@@ -188,7 +175,6 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
 
     try:
         parsed = json.loads(_extract_json_text(content))
-
     except json.JSONDecodeError as e:
         raise RuntimeError(
             "모델 출력(JSON)을 파싱하지 못했습니다. "
@@ -202,25 +188,6 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
     parsed.setdefault("summary", "")
     parsed.setdefault("decisions", [])
     parsed.setdefault("action_items", [])
-
-    # action_items 필드 호환 처리
-    for item in parsed.get("action_items", []):
-
-        # owner -> assignee 변환
-        if "assignee" not in item and "owner" in item:
-            item["assignee"] = item.get("owner") or ""
-
-        # deadline -> due_date 변환
-        if "due_date" not in item and "deadline" in item:
-            item["due_date"] = item.get("deadline") or ""
-
-        # 필수 필드 보정
-        item.setdefault("task", "")
-        item.setdefault("assignee", "")
-        item.setdefault("due_date", "")
-
-    logger.info("===== FINAL PARSED JSON =====")
-    logger.info(json.dumps(parsed, ensure_ascii=False, indent=2))
 
     return parsed
 

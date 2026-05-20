@@ -9,12 +9,11 @@ upload_router.py
 
 주의
 - 실제 파일 저장, 전처리, STT/OCR/분석, DB 저장은 services 계층에서 처리
+- 이 파일은 업로드 요청과 응답 처리에 집중
 - 로그인 기능이 있으므로 current_user 기준으로 업로드 대상 회의 소유권을 확인해야 함
 """
 
-from __future__ import annotations
-
-from typing import Annotated
+from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -22,8 +21,8 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from models.user_model import User
 from schemas.image_schema import ImageUploadResponse
-from schemas.transcript_schema import TranscriptResponse
-from services.audio_service import process_uploaded_audio
+from schemas.summary_schema import SummaryResponse
+from services.audio_service import process_uploaded_audio_files_and_create_summary
 from services.image_service import process_uploaded_image_files
 from utils.auth_dependency import get_current_user
 
@@ -36,25 +35,36 @@ router = APIRouter(
 
 @router.post(
     "/audio/{meeting_id}",
-    response_model=TranscriptResponse,
+    response_model=SummaryResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="오디오 여러 개 업로드 후 transcript 생성",
+    summary="오디오 여러 개 업로드 후 통합 요약 생성",
 )
 def upload_audio(
     meeting_id: int,
-    files: Annotated[
-        list[UploadFile],
-        File(description="순서가 있는 오디오 세그먼트(1개면 단일 업로드와 동일)"),
-    ],
+    files: List[UploadFile] = File(..., description="업로드할 오디오 파일 목록"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> TranscriptResponse:
+) -> SummaryResponse:
     """
-    오디오 파일을 업로드하고 STT를 수행한 뒤 transcript를 저장합니다.
+    여러 오디오 파일을 업로드하고,
+    각 파일마다 STT를 수행하여 transcript를 저장한 뒤,
+    전체 transcript를 합쳐 LLM 요약을 한 번만 수행합니다.
 
-    - 파트 이름은 `files`이며, 동일 이름으로 여러 개를 보낼 수 있습니다.
-    - 세그먼트가 2개 이상이면 서버에서 ffmpeg로 병합한 뒤 STT를 한 번만 호출합니다.
-    - 저장 구조는 uploads/users/{user_id}/meetings/{meeting_id}/audio/ 입니다.
+    요청 형식
+    ----------
+    Content-Type: multipart/form-data
+
+    key 이름
+    ----------
+    files
+
+    인증
+    ----------
+    Authorization: Bearer {access_token}
+
+    저장 구조
+    ----------
+    uploads/users/{user_id}/meetings/{meeting_id}/audio/
     """
 
     if not files:
@@ -70,7 +80,7 @@ def upload_audio(
                 detail="업로드할 오디오 파일명이 비어 있습니다.",
             )
 
-    return process_uploaded_audio(
+    return process_uploaded_audio_files_and_create_summary(
         db=db,
         meeting_id=meeting_id,
         upload_files=files,
@@ -80,27 +90,36 @@ def upload_audio(
 
 @router.post(
     "/image/{meeting_id}",
-    response_model=list[ImageUploadResponse],
+    response_model=List[ImageUploadResponse],
     status_code=status.HTTP_201_CREATED,
     summary="이미지 여러 개 업로드",
 )
 def upload_image(
     meeting_id: int,
-    files: Annotated[
-        list[UploadFile],
-        File(description="업로드할 이미지/문서 파일 목록"),
-    ],
+    files: List[UploadFile] = File(..., description="업로드할 이미지 파일 목록"),
     image_type: str = Form("image", description="image 또는 whiteboard"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ImageUploadResponse]:
+) -> List[ImageUploadResponse]:
     """
     이미지 파일 여러 개를 업로드하고 OCR/분석을 수행한 뒤 결과를 저장합니다.
 
-    image_type
+    요청 형식
     ----------
-    - image
-    - whiteboard
+    Content-Type: multipart/form-data
+
+    key 이름
+    ----------
+    files      : 이미지 파일 여러 개
+    image_type : image 또는 whiteboard
+
+    인증
+    ----------
+    Authorization: Bearer {access_token}
+
+    저장 구조
+    ----------
+    uploads/users/{user_id}/meetings/{meeting_id}/images/
     """
 
     if not files:

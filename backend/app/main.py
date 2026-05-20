@@ -21,7 +21,6 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from config.database import engine
-from config.schema_compat import ensure_schema_compatibility
 from models import Base
 from routers import (
     auth_router,
@@ -70,7 +69,6 @@ def on_startup() -> None:
 
     # SQLAlchemy Base에 등록된 모든 테이블 생성
     Base.metadata.create_all(bind=engine)
-    ensure_schema_compatibility(engine)
 
     # 기본 업로드 폴더 생성
     #
