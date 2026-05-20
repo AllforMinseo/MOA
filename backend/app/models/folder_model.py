@@ -16,7 +16,7 @@ folder_model.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 
-from config.database import Base
+from models.base import Base
 
 
 class Folder(Base):
