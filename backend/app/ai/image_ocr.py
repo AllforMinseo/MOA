@@ -7,6 +7,8 @@ image_ocr.py
 - 일반 이미지의 텍스트 추출(OCR)
 - 화이트보드 이미지의 텍스트 추출 + 구조 분석
 - image_type에 따라 처리 로직 분기
+- PDF는 이 파일에서 직접 처리하지 않고,
+  image_service.py에서 페이지별 이미지로 변환한 뒤 이 OCR 함수를 재사용한다.
 
 지원 image_type
 ----------------
@@ -60,19 +62,15 @@ def _detect_mime_type_from_file_header(file_path: str) -> str | None:
     with open(file_path, "rb") as file:
         header = file.read(16)
 
-    # JPEG: FF D8 FF
     if header.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
 
-    # PNG: 89 50 4E 47 0D 0A 1A 0A
     if header.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
 
-    # GIF: GIF87a 또는 GIF89a
     if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
         return "image/gif"
 
-    # WEBP: RIFF....WEBP
     if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
         return "image/webp"
 
@@ -88,30 +86,24 @@ def _guess_mime_type(file_path: str) -> str:
     1. 파일 내용의 시그니처로 MIME 타입 확인
     2. 확장자로 MIME 타입 확인
     3. 지원하지 않는 타입이면 에러 발생
-
-    OpenAI 이미지 입력에는 image/jpeg, image/png, image/webp, image/gif 등이 필요하다.
     """
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"이미지 파일을 찾을 수 없습니다: {file_path}")
 
-    # 1. 파일 내용 기준으로 먼저 확인
     header_mime_type = _detect_mime_type_from_file_header(file_path)
 
     if header_mime_type in SUPPORTED_IMAGE_MIME_TYPES:
         return header_mime_type
 
-    # 2. 확장자 기준으로 확인
     mime_type, _ = mimetypes.guess_type(file_path)
 
-    # jpg 확장자의 경우 환경에 따라 image/jpg로 잡히는 경우가 있어 보정
     if mime_type == "image/jpg":
         mime_type = "image/jpeg"
 
     if mime_type in SUPPORTED_IMAGE_MIME_TYPES:
         return mime_type
 
-    # 3. 여기까지 오면 OpenAI가 받을 수 없는 이미지 형식
     raise ValueError(
         "지원하지 않는 이미지 MIME 타입입니다. "
         f"file_path={file_path}, guessed_mime_type={mime_type}. "
@@ -159,8 +151,6 @@ def _extract_json_from_response(content: str) -> dict:
         return json.loads(content)
 
     except json.JSONDecodeError:
-        # 혹시 모델이 ```json ... ``` 형태로 반환한 경우를 대비해서
-        # 가장 바깥의 { ... } 부분만 추출해본다.
         start = content.find("{")
         end = content.rfind("}")
 
