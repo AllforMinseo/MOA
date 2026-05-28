@@ -23,6 +23,11 @@ from .audio_converter import (
     convert_audio_to_wav,
 )
 
+from .audio_splitter import (
+    split_wav_file,
+)
+
+
 from .security import (
     create_access_token,
     hash_password,
@@ -49,6 +54,9 @@ __all__ = [
 
     # audio_converter
     "convert_audio_to_wav",
+
+     # audio_splitter
+    "split_wav_file",
 
     # security
     "hash_password",
