@@ -15,7 +15,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 app = Flask(__name__)
 CORS(app)
 app.config['JSON_AS_ASCII'] = False
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 # 🔥 ThreadPool (동시 처리 제한)
 executor = ThreadPoolExecutor(max_workers=2)
@@ -65,16 +65,18 @@ def run_stt(task_id, file_path):
     try:
         print(f"🔥 STT 시작: {task_id}")
 
-        # 1. Whisper 분석
+       # 1. Whisper 분석
         segments, info = model.transcribe(
             file_path,
             language="ko",
             beam_size=1,
             best_of=1,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=800),  #주변 잡음 최소한으로
+            vad_parameters=dict(min_silence_duration_ms=800, speech_pad_ms=300),
+            no_speech_threshold=0.6,
+            log_prob_threshold=-1.0, 
             condition_on_previous_text=False,
-            initial_prompt="이 회의는 AI 회의록 시스템입니다. 영단어는 발음대로 적지 말고 영어 원문 그대로 표기하세요."
+            initial_prompt="이 회의는 AI 회의록 시스템입니다. 영단어는 발음대로 적지 말고 영어 원문 그대로 표[>
         )
 
         result_text = " ".join(
