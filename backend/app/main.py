@@ -21,7 +21,6 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from config.database import engine
-from config.schema_compat import ensure_schema_compatibility
 from models import Base
 from routers import (
     auth_router,
@@ -29,6 +28,7 @@ from routers import (
     upload_router,
     decision_router,
     action_item_router,
+    folder_router,
 )
 from storage.upload_paths import ensure_base_upload_dirs
 
@@ -70,7 +70,6 @@ def on_startup() -> None:
 
     # SQLAlchemy Base에 등록된 모든 테이블 생성
     Base.metadata.create_all(bind=engine)
-    ensure_schema_compatibility(engine)
 
     # 기본 업로드 폴더 생성
     #
@@ -118,6 +117,14 @@ def health_check() -> dict:
 # - POST /auth/register
 # - POST /auth/login
 app.include_router(auth_router)
+
+# 폴더 관련 API
+# - 폴더 생성
+# - 폴더 목록 조회
+# - 폴더 이름 수정
+# - 폴더 삭제
+# - 특정 폴더의 회의 목록 조회
+app.include_router(folder_router)
 
 # 회의 관련 API
 # - 회의 생성

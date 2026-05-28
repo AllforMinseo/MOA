@@ -1,19 +1,13 @@
 import requests
 
-from config.settings import settings
-from ai.stt_client import request_stt
+url = "http://34.47.117.201:5000/transcript"
 
-url = settings.stt_server_url
+with open("3분 24초.wav", "rb") as f:
+    response = requests.post(
+        url,
+        files={"file": ("3분 24초.wav", f, "audio/wav")},
+        timeout=180
+    )
 
-print("STT_SERVER_URL =", url)
-print("Calling stt_client.request_stt(...)")
-
-text = request_stt(
-    file_path="4분 26초.mp3",
-    upload_timeout=60,
-    result_timeout=900,
-    poll_interval=2.0,
-)
-
-print("\n=== STT RESULT (first 500 chars) ===")
-print(text[:500])
+print(response.status_code)
+print(response.text)
