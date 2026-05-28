@@ -72,7 +72,7 @@ def run_stt(task_id, file_path):
             beam_size=1,
             best_of=1,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
+            vad_parameters=dict(min_silence_duration_ms=800),  #주변 잡음 최소한으로
             condition_on_previous_text=False,
             initial_prompt="이 회의는 AI 회의록 시스템입니다. 영단어는 발음대로 적지 말고 영어 원문 그대로 표기하세요."
         )
