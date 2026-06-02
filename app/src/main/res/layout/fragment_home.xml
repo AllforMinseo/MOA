@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/homeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/home_header"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/color_text_primary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 폴더 탭 -->
+    <HorizontalScrollView
+        android:id="@+id/folderScroll"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="56dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/folderTabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomStack"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/folderScroll" />
+
+    <!-- 접힘: 한 변=summary_panel_min_height 정사각형(펼침 minHeight와 동일). 펼침: 전체 너비 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/summaryPanelHost"
+        android:layout_width="@dimen/summary_panel_min_height"
+        android:layout_height="@dimen/summary_panel_min_height"
+        android:layout_marginBottom="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="@dimen/summary_panel_min_height"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/gray_100"
+        app:cardCornerRadius="7dp"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomStack"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:strokeColor="@color/gray_300"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- 접힘: 로딩 원 / 체크만 (중앙), 정사각형 = summary_panel_min_height -->
+            <FrameLayout
+                android:id="@+id/summaryPanelCollapsedInner"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/panelCollapsedCircularProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:max="100"
+                    android:progress="0"
+                    android:visibility="gone"
+                    app:indicatorColor="@color/color_primary"
+                    app:indicatorSize="@dimen/summary_panel_collapsed_indicator_size"
+                    app:trackColor="@color/gray_200"
+                    app:trackThickness="3dp"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/panelCollapsedSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:gravity="center"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="@color/color_text_secondary"
+                    android:visibility="gone"
+                    tools:text="요약 대기 2건"
+                    tools:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/panelCollapsedCompleteGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/panelCollapsedCheck"
+                        android:layout_width="@dimen/summary_panel_collapsed_check_size"
+                        android:layout_height="@dimen/summary_panel_collapsed_check_size"
+                        android:contentDescription="@string/summary_panel_complete"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_done" />
+
+                    <TextView
+                        android:id="@+id/panelCollapsedCompleteLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/summary_panel_complete"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="@color/color_text_primary" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- 펼침 내용 -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/summaryPanelExpandedInner"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:minHeight="@dimen/summary_panel_min_height"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/panelExpandedTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="@color/color_text_primary"
+                    app:layout_constraintEnd_toStartOf="@id/panelExpandedEta"
+                    app:layout_constraintHorizontal_bias="0"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:text="2026.05.06 주간 회의록 작성 테스트 중입니다 길게…" />
+
+                <TextView
+                    android:id="@+id/panelExpandedEta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/color_text_secondary"
+                    app:layout_constraintBaseline_toBaselineOf="@id/panelExpandedTitle"
+                    app:layout_constraintEnd_toStartOf="@id/panelExpandedCollapseChevron"
+                    tools:text="3분 남음" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/panelExpandedCollapseChevron"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@string/summary_panel_collapse"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    android:padding="0dp"
+                    android:text="@string/summary_chevron_right"
+                    android:textColor="@color/color_text_primary"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/panelExpandedQueueBanner"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="@color/color_text_secondary"
+                    android:visibility="gone"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/panelExpandedTitle"
+                    tools:text="요약 대기 2건"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/panelProgressBar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:max="100"
+                    android:progress="0"
+                    app:indicatorColor="@color/color_primary"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/panelExpandedPercent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/panelExpandedQueueBanner"
+                    app:trackColor="@color/gray_200"
+                    app:trackCornerRadius="4dp"
+                    app:trackStopIndicatorSize="0dp"
+                    app:trackThickness="6dp" />
+
+                <TextView
+                    android:id="@+id/panelExpandedPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/color_text_primary"
+                    app:layout_constraintBottom_toBottomOf="@id/panelProgressBar"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/panelProgressBar"
+                    tools:text="42%" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/panelExpandedCompleteInner"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/panelExpandedTitleComplete"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="@color/color_text_primary"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/panelExpandedConfirmButton"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:text="2026.05.06 주간 회의…" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/panelExpandedConfirmButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="40dp"
+                        android:text="@string/summary_panel_view_result"
+                        android:textColor="@color/color_text_primary"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:strokeColor="@color/color_divider" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <androidx.constraintlayout.widget.Group
+                    android:id="@+id/groupSummaryExpandedProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="visible"
+                    app:constraint_referenced_ids="panelProgressBar,panelExpandedPercent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:id="@+id/bottomStack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/addMeetingButton"
+            style="@style/AppButtonPrimary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_add_meeting" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -13,3 +13,49 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# ------------------------------
+# Python backend (MOA/backend)
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Environment files (do not commit secrets)
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS/editor extras
+.vscode/
+.idea/
+
+# DB files
+*.db
+local_dev.db
+
+backend/app/server.log
+backend/app/uploads/
