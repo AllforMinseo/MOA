@@ -62,6 +62,7 @@ from schemas.summary_schema import SummaryCreate, SummaryResponse
 from services.stt_service import transcribe_audio_file
 from storage.file_manager import save_audio_file
 from utils.audio_converter import convert_audio_to_wav
+from utils.audio_splitter import split_wav_file
 from utils.preprocess import (
     preprocess_audio_file,
     normalize_transcript_text,
@@ -88,7 +89,7 @@ def _process_single_audio_to_transcript(
     2. 현재 로그인한 사용자 기준 폴더에 오디오 파일 저장
     3. 오디오 파일 기본 전처리
     4. wav 변환
-    5. STT 수행
+    5. wav 파일을 5분 단위로 분할한 뒤 STT 수행
     6. STT 결과 텍스트 정규화
     7. STT 결과가 비어 있으면 저장하지 않고 None 반환
     8. transcript DB 저장
@@ -103,9 +104,6 @@ def _process_single_audio_to_transcript(
         )
 
     # 2. 오디오 파일 저장
-    #
-    # 저장 예시:
-    # uploads/users/{user_id}/meetings/{meeting_id}/audio/{uuid}.wav
     saved_path = save_audio_file(
         upload_file=upload_file,
         user_id=current_user.id,
@@ -113,10 +111,6 @@ def _process_single_audio_to_transcript(
     )
 
     # 3. 오디오 파일 기본 전처리
-    #
-    # 현재 preprocess_audio_file()은 파일 존재 여부를 확인하고
-    # 원본 경로를 그대로 반환한다.
-    # wav 변환은 여기서 하지 않고 convert_audio_to_wav()에서 처리한다.
     try:
         processed_path = preprocess_audio_file(saved_path)
 
@@ -148,15 +142,36 @@ def _process_single_audio_to_transcript(
             detail=f"알 수 없는 오디오 변환 오류가 발생했습니다: {str(e)}",
         )
 
-    # 5. STT 실행
+# 5. 긴 wav 파일을 5분 단위로 분할한 뒤 STT 실행
     try:
-        transcript_text = transcribe_audio_file(wav_path)
+        split_paths = split_wav_file(
+        wav_path=wav_path,
+        segment_seconds=300,
+        )
+
+        transcript_parts: list[str] = []
+
+        for index, split_path in enumerate(split_paths, start=1):
+            print(
+            f"STT split file {index}/{len(split_paths)} = {split_path}",
+            flush=True,
+        )
+
+            part_text = transcribe_audio_file(split_path)
+            part_text = normalize_transcript_text(part_text)
+
+            if part_text:
+                 transcript_parts.append(
+                     f"[오디오 조각 {index}]\n{part_text}"
+            )
+
+        transcript_text = "\n\n".join(transcript_parts)
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"STT 처리 중 오류가 발생했습니다: {str(e)}",
-        )
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"STT 처리 중 오류가 발생했습니다: {str(e)}",
+    )
 
     # 6. STT 결과 텍스트 정규화
     transcript_text = normalize_transcript_text(transcript_text)
