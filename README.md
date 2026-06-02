@@ -28,7 +28,7 @@ MOA(Multimodal Orchestrated Assistant **(모아)** — 회의 음성·문서·�
 
 ### Android 클라이언트 (`:app` 모듈)
 
-[Android](https://developer.android.com)
+<a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-#3DDC84?style=flat-square&logo=Android&logoColor=white"/></a>
 [Kotlin](https://kotlinlang.org)
 [Jetpack Navigation](https://developer.android.com/guide/navigation)
 [Lifecycle](https://developer.android.com/topic/libraries/architecture/lifecycle)
