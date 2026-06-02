@@ -92,7 +92,7 @@ def _process_single_image(
     # 3. 이미지 파일 저장
     #
     # 저장 예시:
-    # uploads/users/{user_id}/meetings/{meeting_id}/images/{uuid}.png
+    # uploads/users/{user_id}/meetings/{meeting_id}/images/<원본 파일명>.png
     saved_path = save_image_file(
         upload_file=upload_file,
         user_id=current_user.id,
