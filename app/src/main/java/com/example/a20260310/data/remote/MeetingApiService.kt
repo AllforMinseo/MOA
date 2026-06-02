@@ -18,6 +18,7 @@ import com.example.a20260310.data.remote.dto.TranscriptResponseDto
 import com.google.gson.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -123,4 +124,17 @@ interface MeetingApiService {
     suspend fun getMeetingFiles(
         @Path("meeting_id") meetingId: Int
     ): MeetingFilesResponseDto
+
+    // MeetingApiService.kt
+    @GET("/meetings/{meeting_id}/files/{file_id}/download")
+    suspend fun downloadFile(
+        @Path("meeting_id") meetingId: Int,
+        @Path("file_id") fileId: Int
+    ): Response<ResponseBody>
+
+    @GET("/meetings/{meeting_id}/files/{file_id}/view")
+    suspend fun viewFile(
+        @Path("meeting_id") meetingId: Int,
+        @Path("file_id") fileId: Int
+    ): Response<ResponseBody>
 }

@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
 import retrofit2.HttpException
+import retrofit2.Response
 
 data class MeetingDetailUiState(
     val meeting: MeetingResponseDto? = null,
@@ -360,6 +362,14 @@ class DetailViewModel(
 
     suspend fun getMeetingFiles(meetingId: Int): List<UploadedFileDto> {
         return repository.getMeetingFiles(meetingId)
+    }
+
+    suspend fun downloadFile(meetingId: Int, fileId: Int): Response<ResponseBody> {
+        return repository.downloadFile(meetingId, fileId)
+    }
+
+    suspend fun viewFile(meetingId: Int, fileId: Int): Response<ResponseBody> {
+        return repository.viewFile(meetingId, fileId)
     }
 
 }

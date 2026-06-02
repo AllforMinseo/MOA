@@ -23,6 +23,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.File
@@ -237,5 +238,14 @@ class MeetingRepository(
 
     suspend fun deleteActionItem(actionItemId: Int): Response<Unit> {
         return api.deleteActionItem(actionItemId)
+    }
+
+    // MeetingRepository.kt
+    suspend fun downloadFile(meetingId: Int, fileId: Int): Response<ResponseBody> {
+        return api.downloadFile(meetingId, fileId)
+    }
+
+    suspend fun viewFile(meetingId: Int, fileId: Int): Response<ResponseBody> {
+        return api.viewFile(meetingId, fileId)
     }
 }
