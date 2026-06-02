@@ -94,3 +94,31 @@ def get_uploaded_files_by_meeting_id_and_type(
         .order_by(UploadedFile.created_at.desc())
         .all()
     )
+
+def get_uploaded_file_by_id_and_meeting_id(
+    db: Session,
+    file_id: int,
+    meeting_id: int,
+) -> UploadedFile | None:
+    """
+    file_id와 meeting_id 기준으로 업로드 파일 1개 조회
+
+    사용 목적
+    --------
+    - 파일 보기(view) API
+    - 파일 다운로드(download) API
+
+    보안상 이유
+    ----------
+    file_id만으로 조회하면 다른 회의의 파일에 접근할 수 있으므로,
+    반드시 meeting_id도 함께 조건에 넣는다.
+    """
+
+    return (
+        db.query(UploadedFile)
+        .filter(
+            UploadedFile.id == file_id,
+            UploadedFile.meeting_id == meeting_id,
+        )
+        .first()
+    )

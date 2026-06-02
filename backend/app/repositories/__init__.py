@@ -76,6 +76,7 @@ from .uploaded_file_repository import (
     create_uploaded_file,
     get_uploaded_files_by_meeting_id,
     get_uploaded_files_by_meeting_id_and_type,
+    get_uploaded_file_by_id_and_meeting_id,
 )
 __all__ = [
      # user

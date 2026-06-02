@@ -77,6 +77,7 @@ from .stt_service import transcribe_audio_file
 #file
 from .file_service import (
     get_meeting_uploaded_files,
+    get_meeting_uploaded_file_response,
 )
 
 
@@ -133,4 +134,5 @@ __all__ = [
 
     #file_service
     "get_meeting_uploaded_files",
+    "get_meeting_uploaded_file_response",
 ]
