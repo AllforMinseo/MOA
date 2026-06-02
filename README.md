@@ -4,9 +4,11 @@
 
 <img width="1061" alt="MOA" src="https://github.com/user-attachments/assets/075a8ff8-c62d-4dd8-80c0-d2ff33d5018d" />
 
+
 <div align="center">
-  <iframe src="https://htmlpreview.github.io/?https://github.com/AllforMinseo/MOA/blob/main/moa_card.html" width="820" height="620" frameborder="0" scrolling="no"></iframe>
+  <img src="https://github.com/AllforMinseo/MOA/blob/master/moa_card.png?raw=true" width="750" alt="MOA Tech Card">
 </div>
+
 ---
 
 # 📌  작품 개요
