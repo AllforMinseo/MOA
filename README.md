@@ -5,7 +5,7 @@
 <img width="1061" alt="MOA" src="https://github.com/user-attachments/assets/075a8ff8-c62d-4dd8-80c0-d2ff33d5018d" />
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/4aff31ff-26c8-4ff2-8aed-af6f00282c58" width="750" alt="MOA Tech Card">
+  <img src="https://github.com/user-attachments/assets/4aff31ff-26c8-4ff2-8aed-af6f00282c58" width="1061" alt="MOA Tech Card">
 </div>
 
 ---
