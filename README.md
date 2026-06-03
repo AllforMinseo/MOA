@@ -97,25 +97,23 @@ MOA/
 
 ## 앱 화면
 
-[`nav_graph.xml`](app/src/main/res/navigation/nav_graph.xml) · [`MainActivity`](app/src/main/java/com/example/a20260310/MainActivity.kt) 기준으로, **자주 쓰는 화면만** 정리했습니다.
-
 | 화면 | 역할 |
 | --- | --- |
 | `HomeFragment` | 메인: 회의 목록, 요약 패널, 회의 추가·상세로 진입 |
 | `DetailFragment` | 회의 상세(요약·결정·할 일·첨부 파일) |
 | `AddMethodFragment` → `SummarizingFragment` → `SummaryFragment` | 자료 등록 후 요약 진행·결과 확인(필요 시 `RecordingFragment`에서 녹음) |
 | `LoginFragment` / `SignupFragment` | 로그인·회원가입 |
-| `SettingsFragment` | 드로어 **설정**, 로그아웃 |
+| `SettingsFragment` | **설정**, 로그아웃 |
 
 ## 팀 (연대기)
 
 
 | 이름  | 역할                                  |
 | --- | ----------------------------------- |
+| 신현규 | 팀장, LLM (AI 모델 최적화 및 UI 인터페이스 설계)       |
 | 김민서 | Android Frontend / UI · UX          |
 | 오형채 | Backend (API 연동 서버 구축 및 DB 아키텍처 설계) |
 | 박민혁 | STT (API 연동 및 서버 인프라 관리)            |
-| 신현규 | LLM (AI 모델 최적화 및 UI 인터페이스 설계)       |
 
 
 ---
