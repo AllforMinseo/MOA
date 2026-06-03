@@ -26,8 +26,6 @@ MOA(Multimodal Orchestrated Assistant **(모아)** — 회의 음성·문서·�
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Jetpack Navigation](https://img.shields.io/badge/Jetpack_Navigation-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/guide/navigation)
-[![WorkManager](https://img.shields.io/badge/WorkManager-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started)
-[![ML Kit Doc Scanner](https://img.shields.io/badge/ML_Kit_Doc_Scanner-FF6F00?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/ml-kit/vision/doc-scanner)
 
 ### 백엔드·AI
 
