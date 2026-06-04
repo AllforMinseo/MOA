@@ -57,7 +57,7 @@ def _build_common_rules() -> str:
     summary가 너무 길어지지 않도록 출력 길이 제한을 명확히 둔다.
     """
 
-        return (
+    return (
         "규칙:\n"
         '- 출력은 오직 유효한 JSON만 허용합니다. 마크다운, 설명, 코드펜스는 출력하지 마세요.\n'
         '- 반환 필드는 반드시 summary, decisions, action_items만 사용하세요.\n'
@@ -273,13 +273,15 @@ def _build_payload_prompt(payload: Dict[str, Any]) -> str:
     return (
         "당신은 회의 내용을 구조화하는 분석가입니다.\n"
         "입력으로 회의 메타데이터, STT JSON, OCR/이미지 분석 JSON이 주어집니다.\n"
-        "STT는 실제 회의 발언이고, OCR/PDF/이미지 분석 내용은 참고자료입니다.\n"
-        "이 정보를 종합하되, 회의 요약은 STT를 중심으로 작성하세요.\n"
+        "STT가 있으면 STT는 실제 회의 발언이고, OCR/PDF/이미지 분석 내용은 참고자료입니다.\n"
+        "STT가 없으면 OCR/PDF/이미지 분석 내용을 주 입력으로 사용하세요.\n"
+        "STT와 OCR이 모두 있으면 STT를 중심으로 작성하고, OCR은 보조 근거로만 사용하세요.\n"
         "긴 STT는 여러 조각을 합친 결과일 수 있으므로, 전체 흐름을 보고 중복을 제거하세요.\n"
         "\n"
         f"{_build_common_rules()}"
         '- payload 안에 attendees 또는 참석자 목록이 있으면 action_items의 assignee를 해당 참석자 이름 기준으로 보정하세요.\n'
-        '- OCR/이미지 분석 내용은 회의 맥락 보강용 자료이므로, STT에서 언급되지 않은 문서 내용만으로 회의 내용을 만들지 마세요.\n'
+        '- STT가 있는 경우 OCR/이미지 분석 내용은 회의 맥락 보강용 자료이므로, STT에서 언급되지 않은 문서 내용만으로 회의 내용을 만들지 마세요.\n'
+        '- STT가 없고 OCR/이미지 분석만 있는 경우에는 OCR/이미지 분석 내용을 기준으로 summary, decisions, action_items를 작성하세요.\n'
         '- STT 내용과 OCR/이미지 분석 내용이 충돌하면 STT를 우선하고, 확실하지 않으면 넣지 마세요.\n'
         "\n"
         f"{_build_return_format()}"
@@ -406,14 +408,15 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
                 {
                     "role": "system",
                     "content": (
-                        "당신은 회의 요약 시스템입니다. "
-                        "반드시 입력 내용에만 기반해서 JSON을 생성하세요. "
-                        "STT는 실제 회의 발언이며, OCR/PDF/이미지 분석 내용은 참고자료입니다. "
-                        "OCR/PDF/이미지 분석에만 있는 내용을 회의에서 논의된 것처럼 만들지 마세요. "
-                        "입력에 없는 인물, 사건, 결정사항, 할 일을 절대 만들어내지 마세요. "
-                        "반드시 유효한 JSON만 반환하세요. "
-                        "반환 필드는 summary, decisions, action_items만 사용하세요."
-                    ),
+                                    "당신은 회의 요약 시스템입니다. "
+                                    "반드시 입력 내용에만 기반해서 JSON을 생성하세요. "
+                                    "STT가 있는 경우 STT는 실제 회의 발언이며, OCR/PDF/이미지 분석 내용은 참고자료입니다. "
+                                    "STT가 있는 경우 OCR/PDF/이미지 분석에만 있는 내용을 회의에서 논의된 것처럼 만들지 마세요. "
+                                    "STT가 없고 OCR/PDF/이미지 분석만 있는 경우에는 OCR/PDF/이미지 분석 내용을 근거로 회의 자료를 요약하세요. "
+                                    "입력에 없는 인물, 사건, 결정사항, 할 일을 절대 만들어내지 마세요. "
+                                    "반드시 유효한 JSON만 반환하세요. "
+                                    "반환 필드는 summary, decisions, action_items만 사용하세요."
+                                ),
                 },
                 {
                     "role": "user",
