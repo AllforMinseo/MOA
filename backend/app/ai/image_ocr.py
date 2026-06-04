@@ -247,7 +247,6 @@ def process_image_by_type(image_path: str, image_type: str = "image") -> dict:
                     ],
                 },
             ],
-            temperature=0.2,
         )
 
     except Exception as e:
