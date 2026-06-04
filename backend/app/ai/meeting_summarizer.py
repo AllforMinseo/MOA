@@ -386,7 +386,6 @@ def _call_llm(prompt: str) -> Dict[str, Any]:
     try:
         response = client.chat.completions.create(
             model=settings.openai_model,
-            temperature=0.1,
             response_format={"type": "json_object"},
             messages=[
                 {
